@@ -1,13 +1,23 @@
 ---
 name: figma-extractor
-description: 'Extract compact JSON node hierarchies, design tokens, component instance props, and automated preview images from Figma using the Figma REST API. Trigger this skill whenever the user mentions Figma node extraction, provides a Figma link, asks to inspect a Figma frame/component, or requests implementing UI designs using existing components or design tokens.'
+description: 'Extract compact JSON node hierarchies, design tokens, component instance props, and automated preview images from Figma using the Figma REST API. Trigger this skill during the planning or specification phase whenever a Figma link is provided or when the user asks to inspect, extract, or sync design specifications and tokens from Figma into .specs/. This skill strictly produces specification artifacts and does not modify application code.'
 ---
 
-# Figma Extractor Skill
+# Figma Extractor Skill (SDD Spec Ingest)
 
-Extract design node metadata, component hierarchies, design tokens/variables, and rendered preview images directly from Figma via the Figma REST API. 
+Extract design node metadata, component hierarchies, design tokens/variables, and rendered preview images directly from Figma via the Figma REST API into structured specification artifacts (`.specs/`).
 
-This skill is **Design-System Aware** and serves as a high-performance, token-efficient, zero-dependency alternative to Figma MCP servers across AI coding agents (Antigravity, OpenCode, Codex, Claude Code, Cursor, etc.).
+This skill serves as the **Specification Ingestion Layer** in a **Spec-Driven Development (SDD)** workflow. It is **Design-System Aware**, high-performance, token-efficient, and has zero external dependencies.
+
+---
+
+## Operational Boundary: Spec Ingestion Only
+
+* **Specification Artifacts Only**: This skill strictly outputs machine-readable design specifications (`.specs/<name>.json`) and visual references (`.specs/<name>.png`).
+* **Zero Application Code Changes**: Do **NOT** create, edit, or modify application source code (`.tsx`, `.vue`, `.html`, `.css`, etc.) while executing this skill.
+* **Hand-off to Implementation**: Once specifications are generated in `./.specs/`, present a summary of the extracted tokens, components, and layout bounds. The implementation phase is handled separately by the developer or a downstream builder skill (such as `figma-node-builder`).
+
+---
 
 ## Prerequisites
 
@@ -30,46 +40,35 @@ FIGMA_IGNORE_SSL=true
 
 ## Agent Execution Instructions
 
-To execute the extractor from the workspace or skill directory, run:
+To extract a Figma frame or component as a specification artifact:
 
 ```bash
-node <path-to-skill>/scripts/fetch_figma.js <FigmaURL_or_FileKey> [options]
+# Extract JSON spec and download rendered PNG preview to ./.specs/
+node <path-to-skill>/scripts/fetch_figma.js "<FigmaURL>" -i -o ./.specs/<name>.png > ./.specs/<name>.json
 ```
-*(If the skill is in the workspace root or standard skill folders, use `node scripts/fetch_figma.js`)*.
+*(If the skill is in the workspace root or standard skill folders, use `node figma-extractor/scripts/fetch_figma.js`)*.
 
 ---
 
 ## Usage & Command Formats
 
-### 1. Basic Extraction
+### 1. Spec Extraction (Standard SDD Workflow)
 
-Extract node metadata directly using a full Figma share URL or file key:
+Extract node metadata and download a rendered preview image directly:
 
 ```bash
-# JSON only (Compact, token-optimized AST with resolved tokens & props)
-node scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474"
+# JSON AST + PNG visual preview saved to .specs/
+node figma-extractor/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" -i -o ./.specs/card.png > ./.specs/card.json
 
-# JSON + Automatically download rendered PNG preview image
-node scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --image
-
-# Or with short flag -i
-node scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" -i
-
-# Save preview image to a specific custom path
-node scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" -o ./.specs/preview.png
+# Shallow instances mode (collapses internal component layers into props)
+node figma-extractor/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" -i --shallow-instances -o ./.specs/card.png > ./.specs/card.json
 ```
 
-### 2. Design Tokens & Component Modes
+### 2. Design Tokens Dictionary Mode
 
 ```bash
 # Export only the file's design token dictionary (colors, spacing, radii)
-node scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name" --tokens
-
-# Collapse internal layers of component instances (encourages using existing components)
-node scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --shallow-instances
-
-# Pretty-print formatted JSON (for human inspection)
-node scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --pretty
+node figma-extractor/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name" --tokens > ./.specs/tokens.json
 ```
 
 ### 3. CLI Flags Reference
@@ -77,8 +76,8 @@ node scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id
 | Flag | Shorthand | Description |
 | :--- | :--- | :--- |
 | `--image`, `--download-image` | `-i` | Download and save rendered preview image from Figma. |
-| `--image-path <path>` | `-o <path>` | Custom local file path to save preview image (implies `--image`). |
-| `--tokens`, `--variables` | | Output only the design token dictionary (colors, spacing, radii) for theme setup. |
+| `--image-path <path>` | `-o <path>` | Destination path for saved preview image (e.g. `./.specs/preview.png`). |
+| `--tokens`, `--variables` | | Output only the design token dictionary (colors, spacing, radii). |
 | `--shallow-instances` | | Collapse internal sub-layers of component instances into clean props. |
 | `--pretty` | | Pretty-print JSON with 2-space indentation (default is compact single-line JSON). |
 | `--include-tokens` | | Include full design tokens dictionary alongside node AST. |
@@ -92,10 +91,10 @@ node scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id
 
 ---
 
-## Output Structure & Design-System Awareness
+## Output Spec Structure
 
 ### 1. Resolved Design Tokens
-When a layer uses Figma variables (design tokens), the extractor attaches semantic token names alongside the computed values:
+When a layer uses Figma variables (design tokens), the extractor attaches semantic token names alongside computed fallback values:
 
 ```json
 {
@@ -141,33 +140,11 @@ When an `INSTANCE` node is present, internal property hashes are converted into 
 
 ---
 
-## How to Build Components from the Extracted Data
-
-When synthesizing code from the output:
-
-1. **Using Existing UI Components**:
-   - For `INSTANCE` nodes with resolved `component.name` and `props`:
-     - Check if your codebase already has this component (e.g. `<Button />`, `<Input />`, `<Modal />`).
-     - Directly render: `<Button variant="primary" size="large" hasIcon>Confirm Order</Button>` instead of building raw HTML divs.
-2. **Applying Semantic Design Tokens**:
-   - When a `token` is present (e.g., `colors/brand/primary`, `spacing/md`):
-     - Map to your project's Tailwind class (`bg-brand-primary`, `p-md`, `rounded-lg`) or CSS variable (`var(--color-brand-primary)`).
-     - Avoid hardcoding hex colors or pixel values when tokens are available.
-3. **Layout & Flexbox**:
-   - `HORIZONTAL` $\rightarrow$ `flex flex-row` (`display: flex; flex-direction: row;`).
-   - `VERTICAL` $\rightarrow$ `flex flex-col` (`display: flex; flex-direction: column;`).
-   - `itemSpacing` $\rightarrow$ CSS `gap`.
-   - `primaryAxisAlignItems` & `counterAxisAlignItems` $\rightarrow$ `justify-*` and `items-*`.
-4. **Visual Verification**:
-   - If an image preview was downloaded (`output.image.path`), visually inspect the image file to verify component aesthetics and alignment.
-
----
-
 ## Error Handling & Troubleshooting
 
 - **Token Expired / Missing (`FIGMA_TOKEN_EXPIRED_OR_INVALID` / `isTokenExpiredOrInvalid`)**:
   - Alert the user that their Figma access token is missing, invalid, or expired.
-  - Instruct the user to create a token in **Figma Settings $\rightarrow$ Personal Access Tokens** and export `FIGMA_ACCESS_TOKEN=your_token` or update `.env`.
+  - Instruct the user to create a token in **Figma Settings → Personal Access Tokens** and export `FIGMA_ACCESS_TOKEN=your_token` or update `.env`.
 - **Node Not Found**:
   - Alert the user that the node ID could not be found in the specified file.
 - **Corporate Proxy / Self-Signed SSL (`FIGMA_SSL_CERTIFICATE_ERROR`)**:

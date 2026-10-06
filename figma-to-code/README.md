@@ -1,8 +1,6 @@
-# Figma Extractor
+# Figma To Code
 
-A lightweight, zero-dependency Node.js CLI tool and agent skill that extracts design node metadata, component hierarchies, design tokens, and rendered preview images from Figma via the Figma REST API into `./.specs/`.
-
-This skill serves as the **Specification Ingestion Layer** in a **Spec-Driven Development (SDD)** workflow.
+A lightweight, token-efficient skill designed for AI coding agents to turn Figma designs into clean UI code.
 
 ---
 
@@ -31,7 +29,7 @@ A standard MCP server is only better if:
 
 ---
 
-## How It Works in SDD
+## How It Works (Step-by-Step)
 
 The extraction happens in a simple 5-step pipeline:
 
@@ -50,8 +48,8 @@ The extraction happens in a simple 5-step pipeline:
    - **Maps tokens**: Pairs raw values with their corresponding design token names.
    - **Simplifies components**: Replaces complex internal sub-layers with a clean component name and ready-to-use props.
 
-5. **Specification Delivery (`.specs/`)**  
-   Saves the compact JSON specification (`.specs/<name>.json`) and rendered PNG preview (`.specs/<name>.png`).
+5. **Visual Asset Download & Delivery**  
+   Downloads a sharp PNG preview of the frame to a local folder and delivers the cleaned data directly to the AI agent.
 
 ---
 
@@ -83,26 +81,39 @@ Choose one of the following terminal commands:
 
 *(Optional: If behind a corporate proxy with self-signed SSL certificates, run `echo 'FIGMA_IGNORE_SSL=true' >> .env`).*
 
-### 2. Invoking via AI Coding Agent (Planning / Spec Phase)
-
-In an SDD workflow, prompt the agent during the planning phase:
-> *"Extract the design specification for this Figma frame into `.specs/`: `<FigmaURL>`"*
-
-The agent runs `fetch_figma.js`, generates the `.specs/` artifacts, and reports the extracted tokens and components without modifying any application code.
+### 2. Invoking via AI Coding Agent
+Flags are **completely optional** — you do not have to specify any flags:
+- **Default (No flags needed)**: Simply share a Figma link or ask the agent to inspect a frame. The agent detects the link and runs the extractor automatically with default settings (clean, token-optimized JSON).
+- **Optional Guidance**: You can optionally guide the agent using natural language or by mentioning specific flags:
+  - *"Inspect this frame and download a preview image"* (agent uses `--image` or `-i`).
+  - *"Only extract the design tokens from this file"* (agent uses `--tokens`).
+  - *"Collapse component sub-layers into props"* (agent uses `--shallow-instances`).
+- **Tip (Guarantee Autonomous Invocation)**: To ensure the agent never skips the extractor and never estimates CSS without extracting, add this suggestion to your project's `GEMINI.md` or `AGENTS.md`:
+  ```markdown
+  ## Figma UI Development
+  Whenever a Figma link is provided or you are asked to build UI from Figma:
+  1. Use the `figma-to-code` skill to extract design tokens, component props, and preview images.
+  2. Ground all styling and component props in the extracted data rather than guessing CSS.
+  ```
 
 ### 3. Manual Command Formats
-
 You can also run the script directly from your terminal:
 
 ```bash
-# Save compact JSON spec and rendered image preview to .specs/
-node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" -i -o ./.specs/preview.png > ./.specs/layout.json
+# Basic JSON extraction (compact layout & styling to stdout)
+node figma-to-code/scripts/fetch_figma.js "<FigmaURL>"
 
-# Extract only design tokens dictionary (colors, spacing, radii)
-node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens > ./.specs/tokens.json
+# JSON + automatically download a rendered image preview
+node figma-to-code/scripts/fetch_figma.js "<FigmaURL>" -i
+
+# Save preview image to a custom local path
+node figma-to-code/scripts/fetch_figma.js "<FigmaURL>" -o ./.specs/preview.png
+
+# Extract only design tokens (colors, spacing, radii)
+node figma-to-code/scripts/fetch_figma.js "<FigmaURL>" --tokens
 
 # Collapse component layers into clean props
-node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" -i --shallow-instances -o ./.specs/card.png > ./.specs/card.json
+node figma-to-code/scripts/fetch_figma.js "<FigmaURL>" -i --shallow-instances
 ```
 
 ---
@@ -131,17 +142,17 @@ node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" -i --shallow-instances 
 
 The skill includes the following resources:
 
-- **Agent Instruction Guide (`SKILL.md`)**: The core skill definition read by AI agents containing workflow triggers and operational boundaries (spec ingestion only).
+- **Agent Instruction Guide (`SKILL.md`)**: The core skill definition read by AI agents (Antigravity, Claude Code, Cursor, Codex) containing workflow triggers and pair-programming guidelines.
 - **Core Extraction Script (`scripts/fetch_figma.js`)**: The standalone, zero-dependency Node.js script that interfaces with the Figma REST API, resolves tokens, prunes the AST, and downloads preview images.
 - **Unit Test Suite (`scripts/test_fetch_figma.js`)**: A suite of 33 automated unit tests verifying URL parsing, token formatting, component prop cleaning, and node pruning without requiring network access.
-- **Reference Documentation (`README.md`)**: This guide explaining architecture, comparison, and operational flags.
+- **Specification Directory (`.specs/`)**: The local workspace directory where downloaded image previews are stored for multimodal visual inspection.
+- **Reference Documentation (`README.md`)**: This guide explaining architecture, MCP comparison, and operational flags.
 
 ---
 
-## The SDD Specification Contract (`.specs/`)
+## How AI Agents Build UI From This Data
 
-`figma-extractor` strictly separates **Specification** from **Implementation**:
-* **`.specs/<name>.json`**: The structural AST specification containing bounds, layout directions, paddings, gaps, resolved token names, and component variant props.
-* **`.specs/<name>.png`**: The visual raster reference rendered directly by Figma.
-
-This contract is subsequently consumed during the implementation phase by human developers or specialized builder skills like [`figma-node-builder`](../figma-node-builder).
+- **Use Existing Components**: When the output identifies a component name and props, the agent imports that component instead of building it from scratch.
+- **Apply Design Tokens**: When spacing or color tokens are present, the agent applies framework classes (like Tailwind) or CSS variables instead of hardcoded numbers.
+- **Match Flexbox Layout**: Layout directions, gaps, and alignments directly translate to standard CSS Flexbox or Grid properties.
+- **Cross-Check Visually**: The agent inspects the downloaded preview image to ensure the final code matches the designer's intent.
