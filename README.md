@@ -147,7 +147,8 @@ skills/
 │   └── scripts/              # Standalone Node.js extraction scripts & tests
 └── figma-node-builder/       # SDD Step 2: Spec-driven UI component builder
     ├── SKILL.md              # 4-Phase SDD implementation skill definition
-    └── README.md             # In-depth builder documentation
+    ├── README.md             # In-depth builder documentation
+    └── scripts/              # Spec inspector CLI & test suite
 ```
 
 ---

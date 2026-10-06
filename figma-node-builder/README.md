@@ -84,3 +84,22 @@ Because `figma-node-builder` inspects your project dynamically during Phase 1, i
 * **Frameworks**: React, Next.js, Vue, Nuxt, Svelte, SvelteKit, Astro, Solid, plain HTML/CSS.
 * **Styling**: Tailwind CSS, CSS Modules, Styled Components, Emotion, Vanilla CSS.
 * **Component Libraries**: shadcn/ui, Radix UI, Headless UI, Material UI, Chakra UI, or completely custom design systems.
+
+---
+
+## Spec Inspector CLI
+
+`figma-node-builder` includes a zero-dependency companion inspector tool to quickly analyze any specification file without loading raw JSON into agent context:
+
+```bash
+# Terminal report (dimensions, layout mode, tokens, components, checklist)
+node figma-node-builder/scripts/inspect_spec.js .specs/card.json
+# (or with shorthand name)
+node figma-node-builder/scripts/inspect_spec.js card
+
+# Output clean Markdown tables for implementation plans & walkthroughs
+node figma-node-builder/scripts/inspect_spec.js card --markdown
+
+# Output structured JSON
+node figma-node-builder/scripts/inspect_spec.js card --json
+```

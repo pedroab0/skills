@@ -36,7 +36,15 @@ Before writing any code, inspect the host project to ground your implementation:
 3. **Design Token System**: Inspect `tailwind.config.js`, `theme.css`, or `globals.css` to see how colors and spacing scales are configured.
 
 ### Phase 2: Gap Analysis & Token Mapping
-Analyze the input JSON spec (`.specs/<name>.json`):
+Analyze the input JSON spec (`.specs/<name>.json`).
+
+> **Tip**: Instead of reading the entire raw JSON AST into your context window, run the companion **Spec Inspector CLI** to get a compact summary:
+> ```bash
+> node figma-node-builder/scripts/inspect_spec.js .specs/<name>.json
+> # Or output Markdown directly for your implementation plan:
+> node figma-node-builder/scripts/inspect_spec.js .specs/<name>.json --markdown
+> ```
+
 * **Component Instances**: For each node with `type: "INSTANCE"`, match `component.name` against existing codebase components. Extract its `props` (e.g., `{ variant: "outline", size: "lg", hasIcon: true }`).
 * **Design Tokens**: For every `token` property (e.g., `colors/brand/primary`, `spacing/md`, `radii/lg`), map to the project's CSS variables (`var(--color-brand-primary)`) or Tailwind classes (`bg-brand-primary`, `p-4`, `rounded-lg`).
 * **Gaps**: Identify any sub-components that do not exist yet in the codebase and plan to scaffold them.

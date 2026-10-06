@@ -8,7 +8,7 @@
   },
   "main": "./bin/cli.js",
   "scripts": {
-    "test": "node figma-extractor/scripts/test_fetch_figma.js && node figma-to-code/scripts/test_fetch_figma.js && node test/test_cli.js",
+    "test": "node figma-extractor/scripts/test_fetch_figma.js && node figma-to-code/scripts/test_fetch_figma.js && node figma-node-builder/scripts/test_inspect_spec.js && node test/test_cli.js",
     "install-skills": "node ./bin/cli.js"
   },
   "repository": {
