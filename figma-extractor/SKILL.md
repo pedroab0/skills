@@ -43,8 +43,8 @@ FIGMA_IGNORE_SSL=true
 To extract a Figma frame or component as a specification artifact:
 
 ```bash
-# Extract JSON spec and download rendered PNG preview to ./.specs/
-node <path-to-skill>/scripts/fetch_figma.js "<FigmaURL>" -i -o ./.specs/<name>.png > ./.specs/<name>.json
+# Recommended: Atomic extraction (automatically writes ./.specs/<name>.json and ./.specs/<name>.png)
+node <path-to-skill>/scripts/fetch_figma.js "<FigmaURL>" --spec <name>
 ```
 *(If the skill is in the workspace root or standard skill folders, use `node figma-extractor/scripts/fetch_figma.js`)*.
 
@@ -52,16 +52,16 @@ node <path-to-skill>/scripts/fetch_figma.js "<FigmaURL>" -i -o ./.specs/<name>.p
 
 ## Usage & Command Formats
 
-### 1. Spec Extraction (Standard SDD Workflow)
+### 1. Atomic Spec Extraction (Recommended SDD Workflow)
 
-Extract node metadata and download a rendered preview image directly:
+Extract node metadata and download a rendered preview image directly without shell redirection:
 
 ```bash
-# JSON AST + PNG visual preview saved to .specs/
-node figma-extractor/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" -i -o ./.specs/card.png > ./.specs/card.json
+# Atomic: writes ./.specs/card.json and ./.specs/card.png
+node figma-extractor/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --spec card
 
-# Shallow instances mode (collapses internal component layers into props)
-node figma-extractor/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" -i --shallow-instances -o ./.specs/card.png > ./.specs/card.json
+# Shallow instances mode (collapses internal component layers into clean props)
+node figma-extractor/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --spec card --shallow-instances
 ```
 
 ### 2. Design Tokens Dictionary Mode
@@ -75,6 +75,7 @@ node figma-extractor/scripts/fetch_figma.js "https://www.figma.com/design/:fileK
 
 | Flag | Shorthand | Description |
 | :--- | :--- | :--- |
+| `--spec <name>` | | **Atomic SDD mode**: Automatically creates `./.specs/` and saves `<name>.json` & `<name>.png`. |
 | `--image`, `--download-image` | `-i` | Download and save rendered preview image from Figma. |
 | `--image-path <path>` | `-o <path>` | Destination path for saved preview image (e.g. `./.specs/preview.png`). |
 | `--tokens`, `--variables` | | Output only the design token dictionary (colors, spacing, radii). |

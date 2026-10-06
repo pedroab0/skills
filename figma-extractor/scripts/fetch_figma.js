@@ -762,6 +762,8 @@ function parseArguments(argv) {
   const result = {
     fileKey: null,
     nodeId: null,
+    specName: null,
+    specJsonPath: null,
     imagePath: null,
     downloadImage: false,
     raw: false,
@@ -788,6 +790,10 @@ function parseArguments(argv) {
     const arg = args[i];
     if (arg === '--raw') {
       result.raw = true;
+    } else if (arg === '--spec') {
+      if (i + 1 >= args.length) continue;
+      result.specName = args[++i];
+      result.downloadImage = true;
     } else if (arg === '--image' || arg === '-i' || arg === '--download-image') {
       result.downloadImage = true;
     } else if (arg === '--image-path' || arg === '-o' || arg === '--output') {
@@ -818,6 +824,22 @@ function parseArguments(argv) {
     } else if (!arg.startsWith('-')) {
       positional.push(arg);
     }
+  }
+
+  // Handle atomic --spec <name> paths
+  if (result.specName) {
+    let rawSpec = result.specName.trim();
+    const hasDir = rawSpec.includes('/') || rawSpec.includes('\\');
+    const specDir = hasDir ? path.dirname(rawSpec) : './.specs';
+    let baseName = path.basename(rawSpec);
+    if (baseName.endsWith('.json')) baseName = baseName.slice(0, -5);
+    else if (baseName.endsWith('.png')) baseName = baseName.slice(0, -4);
+
+    result.specJsonPath = path.join(specDir, `${baseName}.json`);
+    if (!result.imagePath) {
+      result.imagePath = path.join(specDir, `${baseName}.png`);
+    }
+    result.downloadImage = true;
   }
 
   if (positional.length === 0 && !result.help) {
@@ -851,6 +873,7 @@ Usage:
   node fetch_figma.js <fileKey> [nodeId] [options]
 
 Options:
+  --spec <name>                Atomically save ./.specs/<name>.json and ./.specs/<name>.png (SDD workflow)
   --image, -i                  Download rendered preview image from Figma
   --image-path, -o <path>      Target path for saved preview image (implies --image)
   --tokens, --variables        Export only the design token dictionary (colors, spacing, radii)
@@ -866,10 +889,14 @@ Options:
   --help, -h                   Show this help message
 
 Examples:
-  node fetch_figma.js "https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=4023-474"
-  node fetch_figma.js "https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=4023-474" -i
-  node fetch_figma.js "https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App" --tokens
-  node fetch_figma.js "https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=4023-474" -i --shallow-instances
+  # Atomic SDD extraction (zero shell redirects)
+  node fetch_figma.js "https://www.figma.com/design/.../App?node-id=4023-474" --spec card
+
+  # Download preview image to custom path
+  node fetch_figma.js "https://www.figma.com/design/.../App?node-id=4023-474" -i -o ./.specs/preview.png
+
+  # Export tokens only
+  node fetch_figma.js "https://www.figma.com/design/.../App" --tokens
 `);
 }
 
@@ -977,7 +1004,27 @@ async function main() {
       output.image = imageResult;
     }
 
-    console.log(JSON.stringify(output, null, config.pretty ? 2 : 0));
+    if (config.specJsonPath) {
+      const jsonDir = path.dirname(path.resolve(config.specJsonPath));
+      if (!fs.existsSync(jsonDir)) {
+        fs.mkdirSync(jsonDir, { recursive: true });
+      }
+      const jsonContent = JSON.stringify(output, null, config.pretty ? 2 : 0);
+      fs.writeFileSync(path.resolve(config.specJsonPath), jsonContent, 'utf8');
+
+      const sizeKb = (Buffer.byteLength(jsonContent, 'utf8') / 1024).toFixed(1);
+      const specLabel = path.basename(config.specJsonPath, '.json');
+      console.log(`\n✔ Saved Figma specification for "${specLabel}":`);
+      console.log(`  • AST Spec:  ${config.specJsonPath} (${sizeKb} KB)`);
+      if (imageResult && !imageResult.error && imageResult.path) {
+        console.log(`  • Preview:   ${config.imagePath}`);
+      } else if (imageResult && imageResult.error) {
+        console.log(`  ⚠ Preview:   ${imageResult.error}`);
+      }
+      console.log(``);
+    } else {
+      console.log(JSON.stringify(output, null, config.pretty ? 2 : 0));
+    }
   } catch (error) {
     const errorPayload = formatApiError(error);
     console.error(JSON.stringify(errorPayload, null, config.pretty ? 2 : 0));

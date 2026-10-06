@@ -95,14 +95,14 @@ The agent runs `fetch_figma.js`, generates the `.specs/` artifacts, and reports 
 You can also run the script directly from your terminal:
 
 ```bash
-# Save compact JSON spec and rendered image preview to .specs/
-node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" -i -o ./.specs/preview.png > ./.specs/layout.json
+# Recommended: Atomic extraction (automatically writes ./.specs/card.json and ./.specs/card.png)
+node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --spec card
+
+# Atomic extraction with shallow instances (collapses component internals into props)
+node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --spec card --shallow-instances
 
 # Extract only design tokens dictionary (colors, spacing, radii)
 node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens > ./.specs/tokens.json
-
-# Collapse component layers into clean props
-node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" -i --shallow-instances -o ./.specs/card.png > ./.specs/card.json
 ```
 
 ---
@@ -111,6 +111,7 @@ node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" -i --shallow-instances 
 
 | Flag | Shorthand | Description |
 | :--- | :--- | :--- |
+| `--spec <name>` | | **Atomic SDD mode**: Automatically creates `./.specs/` and saves `<name>.json` & `<name>.png`. |
 | `--image`, `--download-image` | `-i` | Automatically download and save rendered preview image from Figma. |
 | `--image-path <path>` | `-o <path>` | Custom destination path for saved preview image (e.g., `./.specs/card.png`). |
 | `--tokens`, `--variables` | | Export only the file's design token dictionary (colors, spacing, radii). |

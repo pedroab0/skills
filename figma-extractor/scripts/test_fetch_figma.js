@@ -333,6 +333,21 @@ test('parseArguments: -i, --image, and -o flags', () => {
   assert.strictEqual(res2.imagePath, './custom.png');
 });
 
+test('parseArguments: --spec sets atomic specJsonPath and companion imagePath', () => {
+  const argv = ['node', 'fetch_figma.js', 'https://www.figma.com/design/xyz123/Test?node-id=1-2', '--spec', 'card'];
+  const res = parseArguments(argv);
+  assert.strictEqual(res.specName, 'card');
+  assert.strictEqual(res.specJsonPath, '.specs/card.json');
+  assert.strictEqual(res.imagePath, '.specs/card.png');
+  assert.strictEqual(res.downloadImage, true);
+
+  const argvCustom = ['node', 'fetch_figma.js', 'xyz123', '1:2', '--spec', 'custom/dir/navbar.json'];
+  const resCustom = parseArguments(argvCustom);
+  assert.strictEqual(resCustom.specJsonPath, 'custom/dir/navbar.json');
+  assert.strictEqual(resCustom.imagePath, 'custom/dir/navbar.png');
+  assert.strictEqual(resCustom.downloadImage, true);
+});
+
 test('parseArguments: supports base URL with positional nodeId fallback', () => {
   const argv = [
     'node',
