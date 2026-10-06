@@ -40,9 +40,12 @@ Analyze the input JSON spec (`.specs/<name>.json`).
 
 > **Tip**: Instead of reading the entire raw JSON AST into your context window, run the companion **Spec Inspector CLI** to get a compact summary:
 > ```bash
+> # Global Antigravity install:
+> node ~/.gemini/config/skills/figma-node-builder/scripts/inspect_spec.js .specs/<name>.json
+> # Or project local install:
 > node figma-node-builder/scripts/inspect_spec.js .specs/<name>.json
-> # Or output Markdown directly for your implementation plan:
-> node figma-node-builder/scripts/inspect_spec.js .specs/<name>.json --markdown
+> # Output Markdown directly for your implementation plan:
+> node <skill-dir>/scripts/inspect_spec.js .specs/<name>.json --markdown
 > ```
 
 * **Component Instances**: For each node with `type: "INSTANCE"`, match `component.name` against existing codebase components. Extract its `props` (e.g., `{ variant: "outline", size: "lg", hasIcon: true }`).

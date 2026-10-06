@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const http = require('http');
+const os = require('os');
 const { URL } = require('url');
 
 // -----------------------------------------------------------------------------
@@ -557,24 +558,153 @@ function pruneFigmaNode(node, context = {}, options = {}) {
 }
 
 // -----------------------------------------------------------------------------
+// Rate Limit Circuit Breaker & Safety Gate
+// -----------------------------------------------------------------------------
+
+const RATE_GATE_WINDOW_MS = 60 * 1000; // 60 seconds sliding window
+const MAX_REQUESTS_PER_WINDOW = 5; // Max 5 calls per minute (well below Figma 10/min threshold)
+const MIN_REQUEST_INTERVAL_MS = 2500; // Minimum 2.5s between consecutive requests
+
+function getRateGateFilePath() {
+  const home = process.env.HOME || (typeof os.homedir === 'function' ? os.homedir() : '');
+  return home ? path.join(home, '.figma_ratelimit.json') : path.join(process.cwd(), '.figma_ratelimit.json');
+}
+
+function loadRateGateState() {
+  const filePath = getRateGateFilePath();
+  if (fs.existsSync(filePath)) {
+    try {
+      const data = fs.readFileSync(filePath, 'utf8');
+      return JSON.parse(data);
+    } catch (_) {}
+  }
+  return { files: {} };
+}
+
+function saveRateGateState(state) {
+  const filePath = getRateGateFilePath();
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(state, null, 2), 'utf8');
+  } catch (_) {}
+}
+
+function resetRateGateState(fileKey) {
+  const state = loadRateGateState();
+  if (!state.files) state.files = {};
+  if (fileKey) {
+    delete state.files[fileKey];
+  } else {
+    state.files = {};
+  }
+  saveRateGateState(state);
+}
+
+function recordRateLimitLockout(fileKey, retryAfterSeconds) {
+  if (!fileKey || !retryAfterSeconds) return;
+  const state = loadRateGateState();
+  if (!state.files) state.files = {};
+  const fileState = state.files[fileKey] || { timestamps: [], lockedUntil: 0 };
+  fileState.lockedUntil = Date.now() + (retryAfterSeconds * 1000);
+  fileState.lastRetryAfter = retryAfterSeconds;
+  state.files[fileKey] = fileState;
+  saveRateGateState(state);
+}
+
+async function checkAndApplyRateGate(fileKey, options = {}) {
+  if (!fileKey) return;
+  const state = loadRateGateState();
+  if (!state.files) state.files = {};
+  const fileState = state.files[fileKey] || { timestamps: [], lockedUntil: 0 };
+  const now = Date.now();
+
+  // 1. Circuit Breaker: Is the file actively locked out by a previous 429 response?
+  if (fileState.lockedUntil && fileState.lockedUntil > now) {
+    const remainingSec = Math.ceil((fileState.lockedUntil - now) / 1000);
+    const unlockDate = new Date(fileState.lockedUntil).toLocaleString();
+    const hours = (remainingSec / 3600).toFixed(1);
+    const err = new Error(
+      `FIGMA_CIRCUIT_BREAKER_ACTIVE: File "${fileKey}" is actively locked by Figma rate limiting until ${unlockDate} (~${remainingSec}s / ~${hours}h remaining). Outgoing API requests to this file are blocked to prevent extending the lockout duration. To continue immediately, duplicate this file in Figma Drafts (Right-click -> Duplicate) to obtain a fresh file key.`
+    );
+    err.isCircuitBreaker = true;
+    err.statusCode = 429;
+    err.retryAfter = remainingSec;
+    err.lockedUntil = fileState.lockedUntil;
+    throw err;
+  }
+
+  // 2. Sliding Window: Clean timestamps older than 60 seconds
+  fileState.timestamps = (fileState.timestamps || []).filter((t) => now - t < RATE_GATE_WINDOW_MS);
+
+  // 3. Inter-request pacing: Ensure at least MIN_REQUEST_INTERVAL_MS since last call
+  if (fileState.timestamps.length > 0 && !options.noWait) {
+    const lastTimestamp = fileState.timestamps[fileState.timestamps.length - 1];
+    const elapsed = now - lastTimestamp;
+    if (elapsed < MIN_REQUEST_INTERVAL_MS) {
+      const waitMs = MIN_REQUEST_INTERVAL_MS - elapsed;
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+
+  // 4. Sliding window burst limit: Cap at MAX_REQUESTS_PER_WINDOW calls/minute
+  if (fileState.timestamps.length >= MAX_REQUESTS_PER_WINDOW && !options.noWait) {
+    const oldestTimestamp = fileState.timestamps[0];
+    const waitMs = RATE_GATE_WINDOW_MS - (Date.now() - oldestTimestamp) + 200;
+    if (waitMs > 0) {
+      console.error(
+        `[RateLimitGuard] Approaching Figma rate limit: pausing ${(waitMs / 1000).toFixed(1)}s to protect file quota...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+
+  // Record this request timestamp
+  const currentNow = Date.now();
+  fileState.timestamps = (fileState.timestamps || []).filter((t) => currentNow - t < RATE_GATE_WINDOW_MS);
+  fileState.timestamps.push(currentNow);
+  state.files[fileKey] = fileState;
+  saveRateGateState(state);
+}
+
+// -----------------------------------------------------------------------------
 // Figma API Execution
 // -----------------------------------------------------------------------------
 
-async function fetchFigmaVariables(fileKey, headers) {
+async function executeFigmaRequest(url, headers, fileKey, options = {}) {
+  if (!options.bypassRateGate && fileKey) {
+    await checkAndApplyRateGate(fileKey, options);
+  }
+  return makeRequest(url, headers);
+}
+
+async function fetchFigmaVariables(fileKey, headers, options = {}) {
+  const state = loadRateGateState();
+  if (state.files && state.files[fileKey] && state.files[fileKey].variablesSupported === false) {
+    // Proactively skip: this file does not support variables or lacks scope
+    return null;
+  }
+
   const url = `https://api.figma.com/v1/files/${fileKey}/variables/local`;
   try {
-    const rawData = await makeRequest(url, headers);
+    const rawData = await executeFigmaRequest(url, headers, fileKey, options);
     const parsed = JSON.parse(rawData);
     if (parsed.status === 200 && parsed.meta) {
       return parsed.meta;
     }
     return null;
   } catch (e) {
-    // Immediately re-throw rate limit and auth errors instead of silently swallowing them
-    if (e.statusCode === 429 || e.statusCode === 401 || e.statusCode === 403) {
+    // Only re-throw rate limit (429) so callers can respect rate-limiting policies
+    if (e.statusCode === 429) {
       throw e;
     }
-    // Graceful fallback if variables are not accessible or file has none
+    // Proactively record lack of variable scope so subsequent runs save an API call
+    if (e.statusCode === 403 || e.statusCode === 404) {
+      const currentState = loadRateGateState();
+      if (!currentState.files) currentState.files = {};
+      const fileState = currentState.files[fileKey] || { timestamps: [], lockedUntil: 0 };
+      fileState.variablesSupported = false;
+      currentState.files[fileKey] = fileState;
+      saveRateGateState(currentState);
+    }
     return null;
   }
 }
@@ -640,14 +770,14 @@ async function fetchFigmaNodes(fileKey, nodeId, headers, options = {}) {
     url += `?depth=${options.depth}`;
   }
 
-  const rawData = await makeRequest(url, headers);
+  const rawData = await executeFigmaRequest(url, headers, fileKey, options);
   const parsed = JSON.parse(rawData);
 
   // Fetch variables unless explicitly disabled
   let varMap = {};
   let tokensDictionary = null;
   if (!options.noVariables) {
-    const varsMeta = await fetchFigmaVariables(fileKey, headers);
+    const varsMeta = await fetchFigmaVariables(fileKey, headers, options);
     const built = buildVariableMap(varsMeta);
     varMap = built.varMap;
     tokensDictionary = built.dictionary;
@@ -728,7 +858,7 @@ async function fetchFigmaImage(fileKey, nodeId, headers, targetPath, options = {
   const format = options.format || 'png';
   const url = `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(nodeId)}&scale=${scale}&format=${format}`;
 
-  const rawData = await makeRequest(url, headers);
+  const rawData = await executeFigmaRequest(url, headers, fileKey, options);
   const parsed = JSON.parse(rawData);
 
   if (parsed.err) {
@@ -821,6 +951,12 @@ function parseArguments(argv) {
       result.includeIds = true;
     } else if (arg === '--pretty') {
       result.pretty = true;
+    } else if (arg === '--reset-circuit-breaker' || arg === '--reset-rate-gate') {
+      result.resetRateGate = true;
+    } else if (arg === '--bypass-circuit-breaker' || arg === '--bypass-rate-gate' || arg === '--no-rate-gate') {
+      result.bypassRateGate = true;
+    } else if (arg === '--force' || arg === '-f' || arg === '--fresh') {
+      result.force = true;
     } else if (!arg.startsWith('-')) {
       positional.push(arg);
     }
@@ -908,6 +1044,21 @@ async function main() {
   loadEnv();
   const config = parseArguments(process.argv);
 
+  if (config.resetRateGate) {
+    resetRateGateState(config.fileKey);
+    console.log(
+      JSON.stringify(
+        {
+          message: `Rate limit safety gate cleared${config.fileKey ? ` for "${config.fileKey}"` : ''}.`,
+          success: true,
+        },
+        null,
+        config.pretty ? 2 : 0,
+      ),
+    );
+    return;
+  }
+
   if (config.help || !config.fileKey) {
     printUsage();
     if (!config.help) {
@@ -944,9 +1095,41 @@ async function main() {
   const headers = getAuthHeaders(token);
 
   try {
+    // Proactive Spec Reuse: If spec already exists locally and --force is not passed, reuse with 0 API calls
+    if (config.specJsonPath && fs.existsSync(path.resolve(config.specJsonPath)) && !config.force) {
+      try {
+        const rawContent = fs.readFileSync(path.resolve(config.specJsonPath), 'utf8');
+        const specLabel = path.basename(config.specJsonPath, '.json');
+        const sizeKb = (Buffer.byteLength(rawContent, 'utf8') / 1024).toFixed(1);
+        console.log(`\n✔ Reusing local Figma specification for "${specLabel}" (0 API calls):`);
+        console.log(`  • AST Spec:  ${config.specJsonPath} (${sizeKb} KB)`);
+        if (config.imagePath && fs.existsSync(path.resolve(config.imagePath))) {
+          console.log(`  • Preview:   ${config.imagePath}`);
+        }
+        console.log(`  (Pass --force or -f to re-fetch freshly from Figma API)\n`);
+        return;
+      } catch (_) {}
+    }
+
     // Mode: Tokens Only
     if (config.tokensOnly) {
-      const varsMeta = await fetchFigmaVariables(config.fileKey, headers);
+      const varsMeta = await fetchFigmaVariables(config.fileKey, headers, {
+        bypassRateGate: config.bypassRateGate,
+      });
+      if (!varsMeta) {
+        console.error(
+          JSON.stringify(
+            {
+              error:
+                'FIGMA_VARIABLES_NOT_ACCESSIBLE: Variables could not be fetched from /variables/local. Ensure your Figma access token has the "file_variables:read" scope and the file belongs to an Organization or Enterprise workspace supporting design tokens.',
+              statusCode: 403,
+            },
+            null,
+            config.pretty ? 2 : 0,
+          ),
+        );
+        process.exit(1);
+      }
       const { dictionary } = buildVariableMap(varsMeta);
       console.log(
         JSON.stringify(
@@ -968,6 +1151,7 @@ async function main() {
       noVariables: config.noVariables,
       includeTokens: config.includeTokens,
       includeIds: config.includeIds,
+      bypassRateGate: config.bypassRateGate,
     });
 
     // 2. Fetch Image Preview if requested
@@ -985,7 +1169,7 @@ async function main() {
             config.nodeId,
             headers,
             config.imagePath,
-            { scale: config.scale, format: config.format },
+            { scale: config.scale, format: config.format, bypassRateGate: config.bypassRateGate },
           );
         }
       } catch (imgErr) {
@@ -1026,6 +1210,9 @@ async function main() {
       console.log(JSON.stringify(output, null, config.pretty ? 2 : 0));
     }
   } catch (error) {
+    if (error.statusCode === 429 && error.retryAfter && !error.isCircuitBreaker) {
+      recordRateLimitLockout(config.fileKey, error.retryAfter);
+    }
     const errorPayload = formatApiError(error);
     console.error(JSON.stringify(errorPayload, null, config.pretty ? 2 : 0));
     process.exit(1);
@@ -1034,22 +1221,31 @@ async function main() {
 
 function formatApiError(error) {
   let errorMessage = error.message;
+  let isCircuitBreaker = Boolean(error.isCircuitBreaker);
   let isTokenExpiredOrInvalid = false;
   let isSslError = false;
-  let isRateLimited = false;
+  let isRateLimited = error.statusCode === 429 || isCircuitBreaker;
   const retryAfter = error.retryAfter !== undefined ? error.retryAfter : null;
   const rateLimitType = error.rateLimitType || null;
 
-  if (error.statusCode === 401 || error.statusCode === 403) {
+  if (isCircuitBreaker) {
+    errorMessage = error.message;
+  } else if (error.statusCode === 401 || error.statusCode === 403) {
     isTokenExpiredOrInvalid = true;
     errorMessage =
       'FIGMA_TOKEN_EXPIRED_OR_INVALID: The provided Figma access token is expired, invalid, or unauthorized. Create a new token in Figma Settings -> Personal Access Tokens and export FIGMA_ACCESS_TOKEN or add it to .env.';
   } else if (error.statusCode === 429) {
     isRateLimited = true;
-    const retryMsg =
-      retryAfter !== null
-        ? ` Please retry after ${retryAfter} second${retryAfter === 1 ? '' : 's'}.`
-        : ' Please wait 30-60 seconds before making more requests.';
+    let retryMsg = ' Please wait 30-60 seconds before making more requests.';
+    if (retryAfter !== null) {
+      if (retryAfter > 3600) {
+        const hours = Math.round(retryAfter / 3600);
+        const days = (retryAfter / 86400).toFixed(1);
+        retryMsg = ` Please retry after ${retryAfter} seconds (~${hours} hours / ${days} days). This file or token may have exceeded the monthly Starter plan quota (up to 20 calls/month). Consider moving the file to a paid team or waiting until the quota resets.`;
+      } else {
+        retryMsg = ` Please retry after ${retryAfter} second${retryAfter === 1 ? '' : 's'}.`;
+      }
+    }
     const typeMsg = rateLimitType ? ` (Policy: ${rateLimitType})` : '';
     errorMessage = `FIGMA_RATE_LIMIT_EXCEEDED: Figma API rate limit reached.${typeMsg}${retryMsg}`;
   } else if (
@@ -1067,6 +1263,7 @@ function formatApiError(error) {
   const payload = {
     error: errorMessage,
     statusCode: error.statusCode || null,
+    isCircuitBreaker,
     isTokenExpiredOrInvalid,
     isSslError,
     isRateLimited,
@@ -1099,6 +1296,14 @@ module.exports = {
   pruneFigmaNode,
   parseArguments,
   formatApiError,
+  executeFigmaRequest,
+  fetchFigmaVariables,
+  checkAndApplyRateGate,
+  loadRateGateState,
+  saveRateGateState,
+  resetRateGateState,
+  recordRateLimitLockout,
+  getRateGateFilePath,
 };
 
 if (require.main === module) {

@@ -119,9 +119,10 @@ function getAgentConfigs(cwd) {
     },
     antigravity: {
       name: 'Google Antigravity',
-      globalPath: path.join(home, '.gemini', 'antigravity-cli', 'skills'),
+      globalPath: path.join(home, '.gemini', 'config', 'skills'),
+      fallbackPath: path.join(home, '.gemini', 'antigravity-cli', 'skills'),
       localPath: path.join(cwd, '.gemini', 'skills'),
-      isDetected: fs.existsSync(path.join(home, '.gemini', 'antigravity-cli')),
+      isDetected: fs.existsSync(path.join(home, '.gemini', 'config')) || fs.existsSync(path.join(home, '.gemini', 'antigravity-cli')),
     },
     cursor: {
       name: 'Cursor',
@@ -425,9 +426,9 @@ ${fs.readFileSync(path.join(skill.path, 'SKILL.md'), 'utf8')}
     return { targetPath: ruleFile, isCursorRule: true };
   }
 
-  if (fs.existsSync(targetPath)) {
+  try {
     fs.rmSync(targetPath, { recursive: true, force: true });
-  }
+  } catch (_) {}
 
   if (useSymlink) {
     try {

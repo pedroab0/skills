@@ -15,6 +15,11 @@ const {
   pruneFigmaNode,
   parseArguments,
   formatApiError,
+  fetchFigmaVariables,
+  checkAndApplyRateGate,
+  recordRateLimitLockout,
+  resetRateGateState,
+  loadRateGateState,
 } = require('./fetch_figma.js');
 
 let passedTests = 0;
@@ -417,6 +422,170 @@ test('formatApiError: formats 401/403 token expiration error', () => {
   assert.strictEqual(res.statusCode, 401);
   assert.strictEqual(res.isTokenExpiredOrInvalid, true);
   assert.ok(res.error.includes('FIGMA_TOKEN_EXPIRED_OR_INVALID'));
+});
+
+test('formatApiError: formats 429 error with large retryAfter explaining Starter plan quota', () => {
+  const err = new Error('Too Many Requests');
+  err.statusCode = 429;
+  err.retryAfter = 255590;
+  err.rateLimitType = 'high';
+
+  const res = formatApiError(err);
+  assert.strictEqual(res.statusCode, 429);
+  assert.strictEqual(res.isRateLimited, true);
+  assert.strictEqual(res.retryAfter, 255590);
+  assert.ok(res.error.includes('Please retry after 255590 seconds'));
+  assert.ok(res.error.includes('Starter plan quota'));
+  assert.ok(res.error.includes('(Policy: high)'));
+});
+
+test('fetchFigmaVariables: handles 403 gracefully and re-throws 429', async () => {
+  // Test error handling branch behavior
+  const https = require('https');
+  const originalGet = https.get;
+
+  // 1. Simulate 403 Forbidden (missing file_variables:read scope)
+  const key403 = 'testKey_scope_403';
+  resetRateGateState(key403);
+  https.get = (options, cb) => {
+    const res = {
+      statusCode: 403,
+      headers: {},
+      setEncoding: () => {},
+      on: (event, handler) => {
+        if (event === 'data') handler('{"status":403,"error":true,"message":"Invalid scope"}');
+        if (event === 'end') handler();
+      },
+    };
+    cb(res);
+    return { on: () => {}, setTimeout: () => {} };
+  };
+
+  try {
+    const res403 = await fetchFigmaVariables(key403, {});
+    assert.strictEqual(res403, null, '403 on variables should return null fallback');
+
+    // Proactively verify capability caching:
+    // With state.variablesSupported === false, a subsequent call must skip the network request
+    let getCalled = false;
+    https.get = () => {
+      getCalled = true;
+      throw new Error('Network should not have been called');
+    };
+    const cachedRes = await fetchFigmaVariables(key403, {});
+    assert.strictEqual(cachedRes, null);
+    assert.strictEqual(getCalled, false, 'Cached variablesSupported: false must skip network request');
+  } finally {
+    https.get = originalGet;
+    resetRateGateState(key403);
+  }
+
+  // 2. Simulate 429 Rate Limit (must re-throw)
+  const key429 = 'testKey_rate_429';
+  resetRateGateState(key429);
+  https.get = (options, cb) => {
+    const res = {
+      statusCode: 429,
+      headers: { 'retry-after': '60' },
+      setEncoding: () => {},
+      on: (event, handler) => {
+        if (event === 'data') handler('{"status":429,"err":"Rate limit"}');
+        if (event === 'end') handler();
+      },
+    };
+    cb(res);
+    return { on: () => {}, setTimeout: () => {} };
+  };
+
+  try {
+    let threw = false;
+    try {
+      await fetchFigmaVariables(key429, {});
+    } catch (e) {
+      threw = true;
+      assert.strictEqual(e.statusCode, 429);
+    }
+    assert.ok(threw, '429 on variables should be rethrown');
+  } finally {
+    https.get = originalGet;
+    resetRateGateState(key429);
+  }
+});
+
+// 11. Rate Limit Gate & Circuit Breaker Tests
+test('parseArguments: --reset-circuit-breaker, --bypass-rate-gate, and --force flags', () => {
+  const res1 = parseArguments(['node', 'fetch.js', 'key123', '--reset-circuit-breaker']);
+  assert.strictEqual(res1.resetRateGate, true);
+
+  const res2 = parseArguments(['node', 'fetch.js', 'key123', '--bypass-rate-gate']);
+  assert.strictEqual(res2.bypassRateGate, true);
+
+  const res3 = parseArguments(['node', 'fetch.js', 'key123', '--force']);
+  assert.strictEqual(res3.force, true);
+
+  const res4 = parseArguments(['node', 'fetch.js', 'key123', '-f']);
+  assert.strictEqual(res4.force, true);
+});
+
+test('checkAndApplyRateGate & recordRateLimitLockout: enforces circuit breaker lockout', async () => {
+  const testFileKey = 'test_locked_file_123';
+  resetRateGateState(testFileKey);
+
+  // 1. Initial check on unlocked file should succeed
+  await checkAndApplyRateGate(testFileKey, { noWait: true });
+
+  // 2. Record 429 lockout of 300 seconds
+  recordRateLimitLockout(testFileKey, 300);
+  const state = loadRateGateState();
+  assert.ok(state.files[testFileKey].lockedUntil > Date.now());
+
+  // 3. Next check must be blocked by circuit breaker
+  let blocked = false;
+  try {
+    await checkAndApplyRateGate(testFileKey, { noWait: true });
+  } catch (err) {
+    blocked = true;
+    assert.strictEqual(err.isCircuitBreaker, true);
+    assert.strictEqual(err.statusCode, 429);
+    assert.ok(err.message.includes('FIGMA_CIRCUIT_BREAKER_ACTIVE'));
+  }
+  assert.ok(blocked, 'Circuit breaker should block requests to locked file');
+
+  // 4. Reset rate gate clears lock
+  resetRateGateState(testFileKey);
+  let cleared = true;
+  try {
+    await checkAndApplyRateGate(testFileKey, { noWait: true });
+  } catch (_) {
+    cleared = false;
+  }
+  assert.ok(cleared, 'Resetting rate gate should clear lockout');
+});
+
+test('formatApiError: formats circuit breaker error with isCircuitBreaker flag', () => {
+  const err = new Error('FIGMA_CIRCUIT_BREAKER_ACTIVE: File locked');
+  err.isCircuitBreaker = true;
+  err.statusCode = 429;
+  err.retryAfter = 120;
+
+  const res = formatApiError(err);
+  assert.strictEqual(res.isCircuitBreaker, true);
+  assert.strictEqual(res.isRateLimited, true);
+  assert.strictEqual(res.statusCode, 429);
+  assert.strictEqual(res.retryAfter, 120);
+  assert.ok(res.error.includes('FIGMA_CIRCUIT_BREAKER_ACTIVE'));
+});
+
+test('checkAndApplyRateGate: records request timestamps into sliding window', async () => {
+  const testKey = 'test_sliding_window_123';
+  resetRateGateState(testKey);
+
+  await checkAndApplyRateGate(testKey, { noWait: true });
+  await checkAndApplyRateGate(testKey, { noWait: true });
+
+  const state = loadRateGateState();
+  assert.strictEqual(state.files[testKey].timestamps.length, 2);
+  resetRateGateState(testKey);
 });
 
 console.log(`\nResults: ${passedTests}/${totalTests} tests passed.`);

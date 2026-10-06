@@ -18,6 +18,7 @@ console.log('  ✓ getAvailableSkills: discovers all 3 skills');
 const configs = getAgentConfigs('/mock/project');
 assert.ok(configs.claude, 'claude config exists');
 assert.ok(configs.antigravity, 'antigravity config exists');
+assert.ok(configs.antigravity.globalPath.includes(path.join('.gemini', 'config', 'skills')));
 assert.ok(configs.cursor, 'cursor config exists');
 assert.ok(configs.opencode, 'opencode config exists');
 assert.strictEqual(configs.cursor.isCursorRule, true);

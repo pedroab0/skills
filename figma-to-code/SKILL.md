@@ -11,6 +11,31 @@ This skill connects to the Figma REST API, extracts a compact design-system-awar
 
 ---
 
+## Strict Guardrails: No Browser Scraping / Automation
+
+> [!CAUTION]
+> **NEVER use browser tools (Playwright, Puppeteer, Chrome DevTools, `browser_navigate`, `read_browser_page`) on Figma URLs.**
+>
+> 1. **Figma Canvas is WebGL/Wasm**: Figma renders design canvas elements inside an HTML5 `<canvas>` via WebAssembly. There are NO inspectable HTML DOM elements for frames, layers, texts, or styles. Browser automation cannot extract Figma nodes or properties.
+> 2. **Never search `/Applications` for browsers**: Do not search for installed browser binaries or run browser automation scripts.
+> 3. **API Errors Are Final**: If `fetch_figma.js` returns an API error (e.g., 401 Unauthorized, 403 Forbidden, or 429 Rate Limited), **report the error directly to the user**. Guide them to check their `FIGMA_ACCESS_TOKEN`, permissions, or wait out rate limits. Do NOT attempt browser scraping fallbacks.
+
+---
+
+## Built-in Rate-Limit Gate & Circuit Breaker
+
+To protect your Figma file quota and prevent lockout penalties, `fetch_figma.js` enforces an automatic safety gate:
+* **Max 5 requests per minute** per file key (sliding window limit).
+* **2.5s inter-request pacing** between consecutive requests.
+* **Persistent Circuit Breaker**: If Figma returns HTTP 429, the script records the lockout time locally in `~/.figma_ratelimit.json`. All future calls to that file key are **immediately blocked with zero network traffic**, preventing Figma from extending the lockout penalty.
+
+### Agent Behavioral Rules (Zero-Hammer Protocol)
+1. **Single-Shot Execution**: Run `fetch_figma.js` **once** per target frame or component.
+2. **Never Retry on Failure**: If `fetch_figma.js` returns an error, **DO NOT retry in a loop**. Report the error directly to the user.
+3. **Handling `FIGMA_CIRCUIT_BREAKER_ACTIVE`**: If the circuit breaker trips, inform the user that the file key is on cooldown, and suggest duplicating the file in Figma Drafts (Right-click $\rightarrow$ **Duplicate**) to get a fresh URL.
+
+---
+
 ## Prerequisites
 
 A Figma Access Token (Personal Access Token or OAuth Token) is required.
@@ -32,13 +57,17 @@ FIGMA_IGNORE_SSL=true
 
 ## Agent Execution Instructions
 
-To extract and build UI from a Figma URL:
+To extract and build UI from a Figma URL, run `fetch_figma.js` from the skill's scripts directory:
 
 ```bash
 # Extract compact AST and download reference image preview
-node figma-to-code/scripts/fetch_figma.js "<FigmaURL>" -i
+node <skill-dir>/scripts/fetch_figma.js "<FigmaURL>" -i
 ```
-*(If the skill is in standard skill folders or symlinked, run `node <path-to-skill>/scripts/fetch_figma.js "<FigmaURL>" -i`)*.
+
+**Script Path Resolution**:
+- **Global Antigravity install**: `node ~/.gemini/config/skills/figma-to-code/scripts/fetch_figma.js "<FigmaURL>" -i`
+- **Global Claude Code install**: `node ~/.claude/skills/figma-to-code/scripts/fetch_figma.js "<FigmaURL>" -i`
+- **Project local install**: `node figma-to-code/scripts/fetch_figma.js "<FigmaURL>" -i`
 
 ---
 
