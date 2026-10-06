@@ -63,13 +63,28 @@ FIGMA_IGNORE_SSL=true
 
 ---
 
+## Tier 1 Quota Conservation: AST-Only by Default
+
+> [!IMPORTANT]
+> **Figma Starter plans enforce a strict limit of 20 Tier 1 requests/month.**
+> Both `GET /v1/files/:key/nodes` and `GET /v1/images/:key` count as Tier 1 endpoints.
+>
+> 1. **Default to AST-only extraction**: Running `--spec <name>` without `-i` consumes **only 1 Tier 1 call**. The JSON AST contains 100% of layout rules (flexbox, padding, gap), dimensions, hex colors, corner radii, and text content needed for code generation.
+> 2. **DO NOT pass `-i` / `--image` by default**: Only add `-i` if the user explicitly requests downloading a visual preview screenshot.
+> 3. **Reuse existing specs**: If `.specs/<name>.json` exists, reuse it with **0 API calls**.
+
+---
+
 ## Agent Execution Instructions
 
 To extract a Figma frame or component as a specification artifact, run `fetch_figma.js` from the skill's scripts directory:
 
 ```bash
-# Recommended: Atomic extraction (automatically writes ./.specs/<name>.json and ./.specs/<name>.png)
+# Recommended: Atomic extraction (writes ./.specs/<name>.json - 1 Tier 1 call)
 node <skill-dir>/scripts/fetch_figma.js "<FigmaURL>" --spec <name>
+
+# Optional: With companion preview image (writes .json and .png - 2 Tier 1 calls)
+node <skill-dir>/scripts/fetch_figma.js "<FigmaURL>" --spec <name> -i
 ```
 
 **Script Path Resolution**:
@@ -83,11 +98,14 @@ node <skill-dir>/scripts/fetch_figma.js "<FigmaURL>" --spec <name>
 
 ### 1. Atomic Spec Extraction (Recommended SDD Workflow)
 
-Extract node metadata and download a rendered preview image directly without shell redirection:
+Extract node metadata directly into `./.specs/`:
 
 ```bash
-# Atomic: writes ./.specs/card.json and ./.specs/card.png
+# Atomic AST extraction (1 Tier 1 call - recommended)
 node figma-extractor/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --spec card
+
+# Optional: With rendered preview image (2 Tier 1 calls)
+node figma-extractor/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --spec card -i
 
 # Shallow instances mode (collapses internal component layers into clean props)
 node figma-extractor/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --spec card --shallow-instances
@@ -104,8 +122,8 @@ node figma-extractor/scripts/fetch_figma.js "https://www.figma.com/design/:fileK
 
 | Flag | Shorthand | Description |
 | :--- | :--- | :--- |
-| `--spec <name>` | | **Atomic SDD mode**: Automatically creates `./.specs/` and saves `<name>.json` & `<name>.png`. |
-| `--image`, `--download-image` | `-i` | Download and save rendered preview image from Figma. |
+| `--spec <name>` | | **Atomic SDD mode**: Saves `./.specs/<name>.json` (add `-i` to also download preview PNG). |
+| `--image`, `--download-image` | `-i` | Download and save rendered preview image from Figma (Tier 1 call; optional). |
 | `--image-path <path>` | `-o <path>` | Destination path for saved preview image (e.g. `./.specs/preview.png`). |
 | `--tokens`, `--variables` | | Output only the design token dictionary (colors, spacing, radii). |
 | `--shallow-instances` | | Collapse internal sub-layers of component instances into clean props. |
@@ -177,7 +195,25 @@ When an `INSTANCE` node is present, internal property hashes are converted into 
   - Instruct the user to create a token in **Figma Settings → Personal Access Tokens** and export `FIGMA_ACCESS_TOKEN=your_token` or update `.env`.
 - **Node Not Found**:
   - Alert the user that the node ID could not be found in the specified file.
-- **Corporate Proxy / Self-Signed SSL (`FIGMA_SSL_CERTIFICATE_ERROR`)**:
-  - Instruct the user to add `FIGMA_IGNORE_SSL=true` to `.env` or export it in their environment.
-- **Rate Limited (`FIGMA_RATE_LIMIT_EXCEEDED`)**:
-  - Figma REST API has per-minute rate limits. Pause execution briefly before retrying.
+- **Rate Limited (`FIGMA_RATE_LIMIT_EXCEEDED` / `FIGMA_CIRCUIT_BREAKER_ACTIVE`)**:
+  - Figma REST API has per-minute and monthly rate limits on Starter plans. If quota is exhausted, use the companion Zero-API Figma Desktop plugin below.
+
+---
+
+## Local Companion: Figma Node JSON Extractor (Figma Plugin)
+
+For developers who prefer exporting specifications directly from Figma without configuring API access tokens or consuming REST API quotas:
+
+A companion plugin is available in `<skill-dir>/figma-plugin/`:
+* **Direct Desktop Export**: Runs locally inside Figma via `figma.currentPage.selection`.
+* **Zero Configuration**: No access tokens or environment variables required.
+* **Identical Schema**: Produces the exact `.specs/<name>.json` AST and `.specs/<name>.png` reference image consumed by `figma-node-builder`.
+
+### How to Install & Use
+1. **Figma Community (Recommended)**: Search for **Figma Node JSON Extractor** in Figma Community / Plugins and click **Open in...** or **Save**.
+2. **Manual Installation (Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `<skill-dir>/figma-plugin/manifest.json`.
+3. **Exporting Specs**: Select any frame or component $\rightarrow$ Run **Figma Node JSON Extractor**:
+   * **📋 Copy Node JSON**: Copies the clean AST specification directly to your clipboard.
+   * **💾 .json**: Downloads `<name>.json`.
+   * **🖼 .png**: Downloads `<name>.png` (2x preview).
+   * **📦 Both (.zip)**: Downloads `<name>.specs.zip` containing both files.

@@ -53,6 +53,15 @@ If you are behind a corporate proxy or firewall with self-signed SSL certificate
 FIGMA_IGNORE_SSL=true
 ```
 
+## Tier 1 Quota Conservation: AST-Only by Default
+
+> [!IMPORTANT]
+> **Figma Starter plans enforce a strict limit of 20 Tier 1 requests/month.**
+> Both `GET /v1/files/:key/nodes` and `GET /v1/images/:key` count as Tier 1 endpoints.
+>
+> 1. **Default to AST-only extraction**: Extracting AST without `-i` consumes **only 1 Tier 1 call**. The JSON AST contains 100% of layout rules (flexbox, padding, gap), dimensions, hex colors, corner radii, and text content needed for code generation.
+> 2. **DO NOT pass `-i` / `--image` by default**: Only add `-i` if the user explicitly requests downloading a visual preview screenshot.
+
 ---
 
 ## Agent Execution Instructions
@@ -60,14 +69,17 @@ FIGMA_IGNORE_SSL=true
 To extract and build UI from a Figma URL, run `fetch_figma.js` from the skill's scripts directory:
 
 ```bash
-# Extract compact AST and download reference image preview
+# Recommended: Extract compact AST (1 Tier 1 call)
+node <skill-dir>/scripts/fetch_figma.js "<FigmaURL>"
+
+# Optional: With companion preview image (2 Tier 1 calls)
 node <skill-dir>/scripts/fetch_figma.js "<FigmaURL>" -i
 ```
 
 **Script Path Resolution**:
-- **Global Antigravity install**: `node ~/.gemini/config/skills/figma-to-code/scripts/fetch_figma.js "<FigmaURL>" -i`
-- **Global Claude Code install**: `node ~/.claude/skills/figma-to-code/scripts/fetch_figma.js "<FigmaURL>" -i`
-- **Project local install**: `node figma-to-code/scripts/fetch_figma.js "<FigmaURL>" -i`
+- **Global Antigravity install**: `node ~/.gemini/config/skills/figma-to-code/scripts/fetch_figma.js "<FigmaURL>"`
+- **Global Claude Code install**: `node ~/.claude/skills/figma-to-code/scripts/fetch_figma.js "<FigmaURL>"`
+- **Project local install**: `node figma-to-code/scripts/fetch_figma.js "<FigmaURL>"`
 
 ---
 
@@ -76,18 +88,21 @@ node <skill-dir>/scripts/fetch_figma.js "<FigmaURL>" -i
 ### 1. Basic One-Shot Code Generation
 
 ```bash
-# Standard extraction with preview image (default for UI implementation)
+# Standard extraction (1 Tier 1 call - recommended)
+node figma-to-code/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474"
+
+# Optional: With preview image (2 Tier 1 calls)
 node figma-to-code/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" -i
 
 # Collapse internal layers of component instances into props (guides agent to reuse existing components)
-node figma-to-code/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" -i --shallow-instances
+node figma-to-code/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --shallow-instances
 ```
 
 ### 2. CLI Flags Reference
 
 | Flag | Shorthand | Description |
 | :--- | :--- | :--- |
-| `--image`, `--download-image` | `-i` | Download and save rendered preview image from Figma. |
+| `--image`, `--download-image` | `-i` | Download and save rendered preview image from Figma (Tier 1 call; optional). |
 | `--image-path <path>` | `-o <path>` | Custom local file path to save preview image (implies `--image`). |
 | `--tokens`, `--variables` | | Output only the design token dictionary (colors, spacing, radii) for theme setup. |
 | `--shallow-instances` | | Collapse internal sub-layers of component instances into clean props. |

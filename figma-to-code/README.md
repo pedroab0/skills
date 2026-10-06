@@ -122,7 +122,7 @@ node figma-to-code/scripts/fetch_figma.js "<FigmaURL>" -i --shallow-instances
 
 | Flag | Shorthand | Description |
 | :--- | :--- | :--- |
-| `--image`, `--download-image` | `-i` | Automatically download and save rendered preview image from Figma. |
+| `--image`, `--download-image` | `-i` | Download and save rendered preview image from Figma (Tier 1 call; optional). |
 | `--image-path <path>` | `-o <path>` | Custom destination path for saved preview image (e.g., `./.specs/card.png`). |
 | `--tokens`, `--variables` | | Export only the file's design token dictionary (colors, spacing, radii). |
 | `--shallow-instances` | | Collapse internal layers of component instances into clean props. |
@@ -144,7 +144,7 @@ The skill includes the following resources:
 
 - **Agent Instruction Guide (`SKILL.md`)**: The core skill definition read by AI agents (Antigravity, Claude Code, Cursor, Codex) containing workflow triggers and pair-programming guidelines.
 - **Core Extraction Script (`scripts/fetch_figma.js`)**: The standalone, zero-dependency Node.js script that interfaces with the Figma REST API, resolves tokens, prunes the AST, and downloads preview images.
-- **Unit Test Suite (`scripts/test_fetch_figma.js`)**: A suite of 33 automated unit tests verifying URL parsing, token formatting, component prop cleaning, and node pruning without requiring network access.
+- **Unit Test Suite (`scripts/test_fetch_figma.js`)**: A suite of 39 automated unit tests verifying URL parsing, token formatting, component prop cleaning, rate-limit gates, and node pruning without requiring network access.
 - **Specification Directory (`.specs/`)**: The local workspace directory where downloaded image previews are stored for multimodal visual inspection.
 - **Reference Documentation (`README.md`)**: This guide explaining architecture, MCP comparison, and operational flags.
 

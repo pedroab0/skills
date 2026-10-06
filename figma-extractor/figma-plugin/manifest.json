@@ -1,0 +1,10 @@
+{
+  "name": "Figma Node JSON Extractor",
+  "id": "figma-node-json-extractor",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "capabilities": [],
+  "enableProposedApi": false,
+  "editorType": ["figma", "dev"]
+}

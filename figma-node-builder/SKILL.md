@@ -15,8 +15,8 @@ This skill serves as the **Implementation Layer** in a **Spec-Driven Development
 
 Trigger this skill whenever:
 * The user references an existing specification file (e.g., *"Build the component from `.specs/card.json`"*).
-* An extraction step by `figma-extractor` has just completed, and the user approves the implementation (e.g., *"Proceed"*, *"Build it"*, *"Implement the UI"*).
-* The user asks to turn a local Figma node AST into React, Vue, Svelte, or HTML/CSS code.
+* An extraction step by `figma-extractor` or the **Figma Node JSON Extractor** plugin has completed, and the user approves the implementation (e.g., *"Proceed"*, *"Build it"*, *"Implement the UI"*).
+* The user asks to turn a local Figma node AST (`.specs/<name>.json`) into React, Vue, Svelte, or HTML/CSS code.
 
 ---
 
@@ -75,9 +75,9 @@ Generate component code strictly adhering to the node specification:
    - Map font sizes, font weights, and line heights to existing design tokens or typography classes.
 
 ### Phase 4: Visual Cross-Check & Verification
-* Inspect the companion reference image (`.specs/<name>.png`).
-* Cross-check layout proportions, visual balance, alignments, and responsive behaviors.
-* If a browser tool or dev server is active (Playwright / Chrome DevTools), verify that the rendered DOM visually matches the Figma raster output.
+* **Optional Companion Image**: If the companion preview image (`.specs/<name>.png`) exists, inspect it to cross-check visual styling and icons.
+* **AST-Only Synthesis**: If `.specs/<name>.png` was omitted (to conserve Tier 1 API calls), rely strictly on the exact metrics, flexbox rules, hex colors, and font styles in `.specs/<name>.json`.
+* If a dev server or browser preview is active, verify that the rendered DOM matches the specification.
 
 ---
 

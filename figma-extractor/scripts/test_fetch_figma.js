@@ -344,13 +344,18 @@ test('parseArguments: --spec sets atomic specJsonPath and companion imagePath', 
   assert.strictEqual(res.specName, 'card');
   assert.strictEqual(res.specJsonPath, '.specs/card.json');
   assert.strictEqual(res.imagePath, '.specs/card.png');
-  assert.strictEqual(res.downloadImage, true);
+  assert.strictEqual(res.downloadImage, false, 'Default --spec must NOT download image to conserve Tier 1 quota');
+
+  const argvWithImage = ['node', 'fetch_figma.js', 'https://www.figma.com/design/xyz123/Test?node-id=1-2', '--spec', 'card', '-i'];
+  const resWithImage = parseArguments(argvWithImage);
+  assert.strictEqual(resWithImage.specName, 'card');
+  assert.strictEqual(resWithImage.downloadImage, true, '--spec with -i must enable image download');
 
   const argvCustom = ['node', 'fetch_figma.js', 'xyz123', '1:2', '--spec', 'custom/dir/navbar.json'];
   const resCustom = parseArguments(argvCustom);
   assert.strictEqual(resCustom.specJsonPath, 'custom/dir/navbar.json');
   assert.strictEqual(resCustom.imagePath, 'custom/dir/navbar.png');
-  assert.strictEqual(resCustom.downloadImage, true);
+  assert.strictEqual(resCustom.downloadImage, false);
 });
 
 test('parseArguments: supports base URL with positional nodeId fallback', () => {

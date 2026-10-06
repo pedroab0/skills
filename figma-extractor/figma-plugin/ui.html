@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Figma Node JSON Extractor</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background: #1e1e1e;
+      color: #e0e0e0;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.4;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #333;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+    .badge {
+      background: #0d9488;
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #888;
+      padding: 40px 20px;
+    }
+    .empty-icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+    .content {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+      min-height: 0;
+    }
+    .card {
+      background: #252526;
+      border: 1px solid #383838;
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+    .content.no-preview .card {
+      flex: initial;
+    }
+    .node-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .node-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: #fff;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 260px;
+    }
+    .node-type {
+      font-size: 11px;
+      background: #333;
+      color: #aaa;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .metrics {
+      display: flex;
+      gap: 16px;
+      font-size: 11px;
+      color: #999;
+    }
+    .metric strong {
+      color: #ddd;
+    }
+    .preview-box {
+      margin-top: 10px;
+      background: #181818;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      min-height: 180px;
+      overflow: hidden;
+    }
+    .preview-box img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 9px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+    }
+    .btn-primary {
+      background: #0d9488;
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #0f766e;
+    }
+    .btn-secondary {
+      background: #333338;
+      color: #eee;
+      border: 1px solid #444;
+    }
+    .btn-secondary:hover {
+      background: #3e3e46;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-row button {
+      flex: 1;
+      min-width: 0;
+      padding: 9px 6px;
+      font-size: 11px;
+    }
+    .hint {
+      margin-top: 0;
+      background: #182220;
+      border: 1px solid #115e59;
+      color: #a7f3d0;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .hint code {
+      background: #0f3632;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: monospace;
+      color: #5eead4;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">Figma Node JSON Extractor</div>
+    <div class="badge">Developer Handoff</div>
+  </div>
+
+  <div id="empty-state" class="empty-state">
+    <div class="empty-icon">📐</div>
+    <p><strong>Select a frame or component</strong></p>
+    <p style="font-size: 11px; margin-top: 4px;">Click any element on canvas to inspect and export its Node JSON.</p>
+  </div>
+
+  <div id="content" class="content">
+    <div class="card">
+      <div class="node-header">
+        <span id="node-name" class="node-name">Frame Name</span>
+        <span id="node-type" class="node-type">FRAME</span>
+      </div>
+      <div class="metrics">
+        <div class="metric">Bounds: <strong id="node-bounds">0 × 0 px</strong></div>
+        <div class="metric">AST Size: <strong id="node-size">0 KB</strong></div>
+      </div>
+      <div id="preview-wrapper" class="preview-box">
+        <img id="preview-img" src="" alt="Component Preview">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="btn-copy" class="btn-primary">
+        <span>📋 Copy Node JSON (Clipboard)</span>
+      </button>
+
+      <div class="btn-row">
+        <button id="btn-download-json" class="btn-secondary" title="Download JSON AST spec">
+          <span>💾 .json</span>
+        </button>
+        <button id="btn-download-png" class="btn-secondary" title="Download PNG preview image">
+          <span>🖼 .png</span>
+        </button>
+        <button id="btn-download-both" class="btn-secondary" title="Download both spec & preview in a .zip archive">
+          <span>📦 Both (.zip)</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="hint">
+      <strong>✨ Fast Local Handoff</strong>: Save files into <code>./.specs/</code>, then tell your agent:<br>
+      <code>Build component from .specs/<span id="hint-name">card</span>.json</code>
+    </div>
+  </div>
+
+  <script>
+    let currentData = null;
+    let currentImageBlob = null;
+    let currentImageBytes = null;
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+
+    function flashButton(btn, text) {
+      const original = btn.innerHTML;
+      btn.innerHTML = `<span>${text}</span>`;
+      btn.style.borderColor = '#10b981';
+      setTimeout(() => {
+        btn.innerHTML = original;
+        btn.style.borderColor = '';
+      }, 1500);
+    }
+
+    // Pure vanilla zero-dependency ZIP archive creator (Store format)
+    function createZipBlob(files) {
+      const crcTable = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        crcTable[i] = c >>> 0;
+      }
+      function crc32(bytes) {
+        let crc = 0 ^ (-1);
+        for (let i = 0; i < bytes.length; i++) crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[i]) & 0xFF];
+        return (crc ^ (-1)) >>> 0;
+      }
+
+      const parts = [];
+      const cdParts = [];
+      let offset = 0;
+      const encoder = new TextEncoder();
+
+      for (const f of files) {
+        const nameBytes = encoder.encode(f.name);
+        const dataBytes = f.data;
+        const crc = crc32(dataBytes);
+        const size = dataBytes.length;
+
+        const lh = new Uint8Array(30 + nameBytes.length);
+        const lv = new DataView(lh.buffer);
+        lv.setUint32(0, 0x04034b50, true);
+        lv.setUint16(4, 10, true);
+        lv.setUint16(6, 0x0800, true);
+        lv.setUint32(14, crc, true);
+        lv.setUint32(18, size, true);
+        lv.setUint32(22, size, true);
+        lv.setUint16(26, nameBytes.length, true);
+        lh.set(nameBytes, 30);
+
+        parts.push(lh, dataBytes);
+
+        const cd = new Uint8Array(46 + nameBytes.length);
+        const cv = new DataView(cd.buffer);
+        cv.setUint32(0, 0x02014b50, true);
+        cv.setUint16(4, 20, true);
+        cv.setUint16(6, 10, true);
+        cv.setUint16(8, 0x0800, true);
+        cv.setUint32(16, crc, true);
+        cv.setUint32(20, size, true);
+        cv.setUint32(24, size, true);
+        cv.setUint16(28, nameBytes.length, true);
+        cv.setUint32(42, offset, true);
+        cd.set(nameBytes, 46);
+
+        cdParts.push(cd);
+        offset += lh.length + size;
+      }
+
+      const cdOffset = offset;
+      let cdSize = 0;
+      for (const c of cdParts) cdSize += c.length;
+
+      const eocd = new Uint8Array(22);
+      const ev = new DataView(eocd.buffer);
+      ev.setUint32(0, 0x06054b50, true);
+      ev.setUint16(8, files.length, true);
+      ev.setUint16(10, files.length, true);
+      ev.setUint32(12, cdSize, true);
+      ev.setUint32(16, cdOffset, true);
+
+      return new Blob([...parts, ...cdParts, eocd], { type: 'application/zip' });
+    }
+
+    window.onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+
+      const emptyEl = document.getElementById('empty-state');
+      const contentEl = document.getElementById('content');
+
+      if (msg.type === 'NO_SELECTION') {
+        emptyEl.style.display = 'flex';
+        contentEl.style.display = 'none';
+        currentData = null;
+        currentImageBlob = null;
+        currentImageBytes = null;
+        return;
+      }
+
+      if (msg.type === 'SPEC_EXPORTED') {
+        currentData = msg;
+        emptyEl.style.display = 'none';
+        contentEl.style.display = 'flex';
+
+        document.getElementById('node-name').textContent = msg.originalName || msg.name;
+        document.getElementById('node-type').textContent = msg.nodeType;
+        document.getElementById('node-bounds').textContent = `${msg.bounds.width} × ${msg.bounds.height} px`;
+        document.getElementById('hint-name').textContent = msg.name;
+
+        const jsonStr = JSON.stringify(msg.spec, null, 2);
+        const sizeKb = (new Blob([jsonStr]).size / 1024).toFixed(1);
+        document.getElementById('node-size').textContent = `${sizeKb} KB`;
+
+        const previewImg = document.getElementById('preview-img');
+        const previewWrap = document.getElementById('preview-wrapper');
+        const btnPng = document.getElementById('btn-download-png');
+
+        // Extract image bytes from TypedArray or base64 fallback
+        let imageBytes = null;
+        if (msg.imageBytes instanceof Uint8Array) {
+          imageBytes = msg.imageBytes;
+        } else if (msg.imageBytes && msg.imageBytes.buffer instanceof ArrayBuffer) {
+          imageBytes = new Uint8Array(msg.imageBytes.buffer, msg.imageBytes.byteOffset || 0, msg.imageBytes.byteLength || msg.imageBytes.length);
+        } else if (msg.imageBase64) {
+          try {
+            const binary = atob(msg.imageBase64);
+            imageBytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) imageBytes[i] = binary.charCodeAt(i);
+          } catch (_) {}
+        }
+
+        if (imageBytes && imageBytes.length > 0) {
+          currentImageBytes = imageBytes;
+          currentImageBlob = new Blob([imageBytes], { type: 'image/png' });
+          if (msg.imageBase64) {
+            previewImg.src = `data:image/png;base64,${msg.imageBase64}`;
+          } else {
+            previewImg.src = URL.createObjectURL(currentImageBlob);
+          }
+          previewWrap.style.display = 'flex';
+          contentEl.classList.remove('no-preview');
+          btnPng.disabled = false;
+          btnPng.style.opacity = '1';
+        } else {
+          currentImageBytes = null;
+          currentImageBlob = null;
+          previewWrap.style.display = 'none';
+          contentEl.classList.add('no-preview');
+          btnPng.disabled = true;
+          btnPng.style.opacity = '0.5';
+        }
+      }
+    };
+
+    // Copy to clipboard
+    document.getElementById('btn-copy').onclick = async () => {
+      if (!currentData) return;
+      const jsonStr = JSON.stringify(currentData.spec, null, 2);
+      try {
+        await navigator.clipboard.writeText(jsonStr);
+        const btn = document.getElementById('btn-copy');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span>✔ Copied Node JSON!</span>';
+        btn.style.background = '#16a34a';
+        parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: `Copied "${currentData.name}.json" to clipboard!` } }, '*');
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.style.background = '';
+        }, 2000);
+      } catch (err) {
+        console.error('Clipboard failed', err);
+      }
+    };
+
+    // Download JSON
+    document.getElementById('btn-download-json').onclick = () => {
+      if (!currentData) return;
+      const jsonStr = JSON.stringify(currentData.spec, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      triggerDownload(blob, `${currentData.name}.json`);
+      flashButton(document.getElementById('btn-download-json'), '✔ Saved .json');
+    };
+
+    // Download PNG
+    document.getElementById('btn-download-png').onclick = () => {
+      if (!currentData || !currentImageBlob) return;
+      triggerDownload(currentImageBlob, `${currentData.name}.png`);
+      flashButton(document.getElementById('btn-download-png'), '✔ Saved .png');
+    };
+
+    // Download Both (.specs.zip)
+    document.getElementById('btn-download-both').onclick = () => {
+      if (!currentData) return;
+      const jsonStr = JSON.stringify(currentData.spec, null, 2);
+      const enc = new TextEncoder();
+      const files = [
+        { name: `${currentData.name}.json`, data: enc.encode(jsonStr) }
+      ];
+      if (currentImageBytes) {
+        files.push({ name: `${currentData.name}.png`, data: currentImageBytes });
+      }
+      const zipBlob = createZipBlob(files);
+      triggerDownload(zipBlob, `${currentData.name}.specs.zip`);
+      flashButton(document.getElementById('btn-download-both'), '✔ Saved .zip');
+    };
+  </script>
+</body>
+</html>

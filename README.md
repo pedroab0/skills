@@ -14,7 +14,7 @@ Each skill in this repository is designed to give AI assistants specialized, aut
 | Skill | Role / Workflow | Description | Links |
 | :--- | :--- | :--- | :--- |
 | **[`figma-to-code`](./figma-to-code)** | **One-Shot / Fast Prototyping** | Direct, single-turn conversion of Figma designs into clean, production-ready UI components. Best for rapid prototyping and standalone components. | [Guide](./figma-to-code/README.md) · [`SKILL.md`](./figma-to-code/SKILL.md) |
-| **[`figma-extractor`](./figma-extractor)** | **SDD Step 1 (Ingest)** | Pure specification scraper that pulls compact layout trees, design tokens, and rendered preview images into `./.specs/`. Never touches application code. | [Guide](./figma-extractor/README.md) · [`SKILL.md`](./figma-extractor/SKILL.md) |
+| **[`figma-extractor`](./figma-extractor)** | **SDD Step 1 (Ingest)** | Pure specification scraper (CLI / REST API) and companion Figma Desktop plugin that pull compact layout trees, design tokens, and preview images into `./.specs/`. Never touches application code. | [Guide](./figma-extractor/README.md) · [Plugin](./figma-extractor/figma-plugin/README.md) · [`SKILL.md`](./figma-extractor/SKILL.md) |
 | **[`figma-node-builder`](./figma-node-builder)** | **SDD Step 2 (Implement)** | Grounded UI builder that reads extracted Figma Node specifications (`.specs/*.json`) and preview images (`*.png`) to build components without CSS hallucinations. | [Guide](./figma-node-builder/README.md) · [`SKILL.md`](./figma-node-builder/SKILL.md) |
 
 ---
@@ -29,8 +29,8 @@ flowchart TD
     end
 
     subgraph PathB ["📐 Workflow B: Spec-Driven Development (SDD)"]
-        B1["Figma URL"] --> B2["figma-extractor"]
-        B2 --> B3["Specification Contract<br/>.specs/card.json + .png"]
+        B1["Figma URL or Canvas Selection"] --> B2["figma-extractor<br/>(CLI or Figma Desktop Plugin)"]
+        B2 --> B3["Specification Contract<br/>.specs/card.json (+ .png)"]
         B3 --> B4["Human Review & Gap Analysis"]
         B4 --> B5["figma-node-builder"]
         B5 --> B6["Grounded Production Component"]
@@ -38,7 +38,7 @@ flowchart TD
 ```
 
 * **Use `figma-to-code`** when you want fast execution: you provide a Figma URL, and the agent extracts and writes the component in one turn.
-* **Use `figma-extractor` + `figma-node-builder`** in formal Spec-Driven Development (SDD): the design specification is extracted to disk first, reviewed/approved, and then systematically implemented into your design system without premature code edits.
+* **Use `figma-extractor` + `figma-node-builder`** in formal Spec-Driven Development (SDD): the design specification is extracted to disk first (via CLI or the companion Figma Desktop plugin), reviewed/approved, and then systematically implemented into your design system without premature code edits.
 
 ---
 
@@ -144,6 +144,7 @@ skills/
 ├── figma-extractor/          # SDD Step 1: Pure Figma design specification scraper
 │   ├── SKILL.md              # Pure scraper skill definition (outputs to .specs/)
 │   ├── README.md             # In-depth scraper documentation & flags
+│   ├── figma-plugin/         # Zero-API Figma Desktop plugin (AST + preview exporter)
 │   └── scripts/              # Standalone Node.js extraction scripts & tests
 └── figma-node-builder/       # SDD Step 2: Spec-driven UI component builder
     ├── SKILL.md              # 4-Phase SDD implementation skill definition

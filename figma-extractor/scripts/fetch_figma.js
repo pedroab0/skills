@@ -923,7 +923,6 @@ function parseArguments(argv) {
     } else if (arg === '--spec') {
       if (i + 1 >= args.length) continue;
       result.specName = args[++i];
-      result.downloadImage = true;
     } else if (arg === '--image' || arg === '-i' || arg === '--download-image') {
       result.downloadImage = true;
     } else if (arg === '--image-path' || arg === '-o' || arg === '--output') {
@@ -975,7 +974,6 @@ function parseArguments(argv) {
     if (!result.imagePath) {
       result.imagePath = path.join(specDir, `${baseName}.png`);
     }
-    result.downloadImage = true;
   }
 
   if (positional.length === 0 && !result.help) {
@@ -1009,8 +1007,8 @@ Usage:
   node fetch_figma.js <fileKey> [nodeId] [options]
 
 Options:
-  --spec <name>                Atomically save ./.specs/<name>.json and ./.specs/<name>.png (SDD workflow)
-  --image, -i                  Download rendered preview image from Figma
+  --spec <name>                Atomically save ./.specs/<name>.json (add -i to also download preview PNG)
+  --image, -i                  Download rendered preview image from Figma (Tier 1 call)
   --image-path, -o <path>      Target path for saved preview image (implies --image)
   --tokens, --variables        Export only the design token dictionary (colors, spacing, radii)
   --shallow-instances          Collapse internal layers of component instances into props
@@ -1025,8 +1023,11 @@ Options:
   --help, -h                   Show this help message
 
 Examples:
-  # Atomic SDD extraction (zero shell redirects)
+  # Atomic SDD extraction (AST only - 1 Tier 1 call)
   node fetch_figma.js "https://www.figma.com/design/.../App?node-id=4023-474" --spec card
+
+  # Atomic SDD extraction with companion preview image (2 Tier 1 calls)
+  node fetch_figma.js "https://www.figma.com/design/.../App?node-id=4023-474" --spec card -i
 
   # Download preview image to custom path
   node fetch_figma.js "https://www.figma.com/design/.../App?node-id=4023-474" -i -o ./.specs/preview.png
@@ -1204,6 +1205,8 @@ async function main() {
         console.log(`  • Preview:   ${config.imagePath}`);
       } else if (imageResult && imageResult.error) {
         console.log(`  ⚠ Preview:   ${imageResult.error}`);
+      } else {
+        console.log(`  • Preview:   (skipped to conserve Tier 1 quota; pass -i to download PNG)`);
       }
       console.log(``);
     } else {

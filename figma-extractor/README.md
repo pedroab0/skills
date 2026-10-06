@@ -51,7 +51,7 @@ The extraction happens in a simple 5-step pipeline:
    - **Simplifies components**: Replaces complex internal sub-layers with a clean component name and ready-to-use props.
 
 5. **Specification Delivery (`.specs/`)**  
-   Saves the compact JSON specification (`.specs/<name>.json`) and rendered PNG preview (`.specs/<name>.png`).
+   Saves the compact JSON specification (`.specs/<name>.json`) and optional rendered PNG preview (`.specs/<name>.png`).
 
 ---
 
@@ -95,8 +95,11 @@ The agent runs `fetch_figma.js`, generates the `.specs/` artifacts, and reports 
 You can also run the script directly from your terminal:
 
 ```bash
-# Recommended: Atomic extraction (automatically writes ./.specs/card.json and ./.specs/card.png)
+# Recommended: Atomic extraction (writes ./.specs/card.json - 1 Tier 1 call)
 node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --spec card
+
+# Optional: With companion preview image (writes .json & .png - 2 Tier 1 calls)
+node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --spec card -i
 
 # Atomic extraction with shallow instances (collapses component internals into props)
 node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --spec card --shallow-instances
@@ -111,8 +114,8 @@ node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens > ./.specs/tok
 
 | Flag | Shorthand | Description |
 | :--- | :--- | :--- |
-| `--spec <name>` | | **Atomic SDD mode**: Automatically creates `./.specs/` and saves `<name>.json` & `<name>.png`. |
-| `--image`, `--download-image` | `-i` | Automatically download and save rendered preview image from Figma. |
+| `--spec <name>` | | **Atomic SDD mode**: Saves `./.specs/<name>.json` (add `-i` to also download preview PNG). |
+| `--image`, `--download-image` | `-i` | Download and save rendered preview image from Figma (Tier 1 call; optional). |
 | `--image-path <path>` | `-o <path>` | Custom destination path for saved preview image (e.g., `./.specs/card.png`). |
 | `--tokens`, `--variables` | | Export only the file's design token dictionary (colors, spacing, radii). |
 | `--shallow-instances` | | Collapse internal layers of component instances into clean props. |
@@ -128,13 +131,28 @@ node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens > ./.specs/tok
 
 ---
 
+## Zero-API Companion: Figma Node JSON Extractor (Figma Plugin)
+
+For developers who prefer exporting specifications directly from Figma Desktop without configuring API access tokens or consuming REST API quotas:
+
+* **Published Figma Plugin (Recommended)**: Search for **Figma Node JSON Extractor** in Figma Community / Plugins and click **Open in...** or **Save**.
+* **Manual Local Installation (Developer Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `figma-extractor/figma-plugin/manifest.json`.
+* **Export Options**: Select any frame or component, then click:
+  * **📋 Copy Node JSON**: Copies the clean AST specification to your clipboard.
+  * **💾 .json**: Downloads `<name>.json`.
+  * **🖼 .png**: Downloads `<name>.png` (2x preview).
+  * **📦 Both (.zip)**: Downloads `<name>.specs.zip` containing both files.
+
+---
+
 ## Available Resources
 
 The skill includes the following resources:
 
 - **Agent Instruction Guide (`SKILL.md`)**: The core skill definition read by AI agents containing workflow triggers and operational boundaries (spec ingestion only).
 - **Core Extraction Script (`scripts/fetch_figma.js`)**: The standalone, zero-dependency Node.js script that interfaces with the Figma REST API, resolves tokens, prunes the AST, and downloads preview images.
-- **Unit Test Suite (`scripts/test_fetch_figma.js`)**: A suite of 33 automated unit tests verifying URL parsing, token formatting, component prop cleaning, and node pruning without requiring network access.
+- **Unit Test Suite (`scripts/test_fetch_figma.js`)**: A suite of 40 automated unit tests verifying URL parsing, token formatting, component prop cleaning, rate-limit gates, and node pruning without requiring network access.
+- **Companion Figma Plugin (`figma-plugin/`)**: Zero-API desktop exporter for extracting AST and previews directly inside Figma Desktop.
 - **Reference Documentation (`README.md`)**: This guide explaining architecture, comparison, and operational flags.
 
 ---
@@ -143,6 +161,6 @@ The skill includes the following resources:
 
 `figma-extractor` strictly separates **Specification** from **Implementation**:
 * **`.specs/<name>.json`**: The structural AST specification containing bounds, layout directions, paddings, gaps, resolved token names, and component variant props.
-* **`.specs/<name>.png`**: The visual raster reference rendered directly by Figma.
+* **`.specs/<name>.png`**: The visual raster reference rendered directly by Figma (optional).
 
 This contract is subsequently consumed during the implementation phase by human developers or specialized builder skills like [`figma-node-builder`](../figma-node-builder).

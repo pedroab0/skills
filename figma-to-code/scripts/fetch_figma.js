@@ -988,7 +988,7 @@ Usage:
   node fetch_figma.js <fileKey> [nodeId] [options]
 
 Options:
-  --image, -i                  Download rendered preview image from Figma
+  --image, -i                  Download rendered preview image from Figma (Tier 1 call; optional)
   --image-path, -o <path>      Target path for saved preview image (implies --image)
   --tokens, --variables        Export only the design token dictionary (colors, spacing, radii)
   --shallow-instances          Collapse internal layers of component instances into props
@@ -1003,10 +1003,12 @@ Options:
   --help, -h                   Show this help message
 
 Examples:
+  # Standard AST extraction (1 Tier 1 call)
   node fetch_figma.js "https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=4023-474"
+
+  # Optional: with companion preview image (2 Tier 1 calls)
   node fetch_figma.js "https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=4023-474" -i
   node fetch_figma.js "https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App" --tokens
-  node fetch_figma.js "https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=4023-474" -i --shallow-instances
 `);
 }
 
