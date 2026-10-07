@@ -28,6 +28,9 @@
   ],
   "author": "Pedro Barbosa <p.brbsa@gmail.com>",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "bin",
     "figma-to-code",
