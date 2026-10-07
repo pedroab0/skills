@@ -362,12 +362,14 @@
         emptyEl.style.display = 'none';
         contentEl.style.display = 'flex';
 
-        document.getElementById('node-name').textContent = msg.originalName || msg.name;
-        document.getElementById('node-type').textContent = msg.nodeType;
-        document.getElementById('node-bounds').textContent = `${msg.bounds.width} × ${msg.bounds.height} px`;
-        document.getElementById('hint-name').textContent = msg.name;
+        document.getElementById('node-name').textContent = msg.originalName || msg.name || 'Component';
+        document.getElementById('node-type').textContent = msg.nodeType || 'FRAME';
+        const w = (msg.bounds && typeof msg.bounds.width === 'number') ? msg.bounds.width : 0;
+        const h = (msg.bounds && typeof msg.bounds.height === 'number') ? msg.bounds.height : 0;
+        document.getElementById('node-bounds').textContent = `${w} × ${h} px`;
+        document.getElementById('hint-name').textContent = msg.name || 'component';
 
-        const jsonStr = JSON.stringify(msg.spec, null, 2);
+        const jsonStr = JSON.stringify(msg.spec || {}, null, 2);
         const sizeKb = (new Blob([jsonStr]).size / 1024).toFixed(1);
         document.getElementById('node-size').textContent = `${sizeKb} KB`;
 
