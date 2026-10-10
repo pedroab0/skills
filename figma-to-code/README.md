@@ -155,4 +155,6 @@ The skill includes the following resources:
 - **Use Existing Components**: When the output identifies a component name and props, the agent imports that component instead of building it from scratch.
 - **Apply Design Tokens**: When spacing or color tokens are present, the agent applies framework classes (like Tailwind) or CSS variables instead of hardcoded numbers.
 - **Match Flexbox Layout**: Layout directions, gaps, and alignments directly translate to standard CSS Flexbox or Grid properties.
+- **Resolve Icons Cleanly**: Reuses existing project icons/assets (`components/icons/`, `src/assets/`, `public/`) or installed libraries (`lucide-react`, `@heroicons/react`), preventing hallucinated SVG paths.
+- **Style Image Layers**: Applies exact dimensions, border radius, and object-fit from Figma image fills, leaving clean `<img>` tags with `TODO` markers.
 - **Cross-Check Visually**: The agent inspects the downloaded preview image to ensure the final code matches the designer's intent.

@@ -207,5 +207,5 @@ When synthesizing code from the output:
   - Alert the user that the node ID could not be found in the specified file.
 - **Corporate Proxy / Self-Signed SSL (`FIGMA_SSL_CERTIFICATE_ERROR`)**:
   - Instruct the user to add `FIGMA_IGNORE_SSL=true` to `.env` or export it in their environment.
-- **Rate Limited (`FIGMA_RATE_LIMIT_EXCEEDED`)**:
-  - Figma REST API has per-minute rate limits. Pause execution briefly before retrying.
+- **Rate Limited (`FIGMA_RATE_LIMIT_EXCEEDED` / `FIGMA_CIRCUIT_BREAKER_ACTIVE`)**:
+  - Figma REST API has strict per-minute and monthly rate limits. If rate limited or the circuit breaker trips, report the cooldown to the user and suggest duplicating the file in Figma Drafts to get a fresh URL.
