@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Curated collection of modular, production-ready skills for AI coding agents (Claude Code, Cursor, OpenCode, Antigravity)",
   "bin": {
-    "skills": "./bin/cli.js",
-    "skills-installer": "./bin/cli.js"
+    "skills": "bin/cli.js",
+    "skills-installer": "bin/cli.js"
   },
   "main": "./bin/cli.js",
   "scripts": {
