@@ -34,6 +34,7 @@ Before writing any code, inspect the host project to ground your implementation:
 1. **Framework & Styling**: Check `package.json` for React, Vue, Svelte, Next.js, Tailwind CSS, styled-components, or plain CSS.
 2. **Existing UI Primitives**: Inspect `components/ui/`, `src/components/`, or design system libraries (e.g., shadcn/ui, Radix, MUI) to identify reusable components (`Button`, `Input`, `Card`, `Badge`).
 3. **Design Token System**: Inspect `tailwind.config.js`, `theme.css`, or `globals.css` to see how colors and spacing scales are configured.
+4. **Icons & Assets Discovery**: Check `package.json` for installed icon packages (e.g. `lucide-react`, `@heroicons/react`, `phosphor-react`) and check if local icon folders exist (`components/icons/`, `src/assets/`, `public/`).
 
 ### Phase 2: Gap Analysis & Token Mapping
 Analyze the input JSON spec (`.specs/<name>.json`).
@@ -73,6 +74,20 @@ Generate component code strictly adhering to the node specification:
 3. **Typography & Colors**:
    - Never guess hex colors. If `token` is present, use the semantic token. If not, use the fallback `color` hex string.
    - Map font sizes, font weights, and line heights to existing design tokens or typography classes.
+4. **Icon & Vector Resolution Hierarchy**:
+   When encountering a `VECTOR` node or icon instance:
+   - **Normalize Node Name**: Strip common prefixes (`icon/`, `ic_`, `ico-`) and clean the name (e.g., `icon/search` $\rightarrow$ `search` / `Search`).
+   - **Step 1 (Targeted Local Assets/Components)**: Look for matching files in `components/icons/`, `src/assets/`, or `public/` (e.g., `<SearchIcon />`, `/icons/search.svg`). Avoid recursive searches outside these targeted paths.
+   - **Step 2 (Installed Icon Library)**: If not found locally, import from the icon library detected in `package.json` (e.g., `import { Search } from 'lucide-react'`).
+   - **Step 3 (Semantic Fallback - Never Hallucinate Raw Béziers)**: If not found, render an accessible placeholder (`<span className="w-4 h-4 inline-flex items-center justify-center text-muted-foreground" aria-hidden="true" />`) with a `TODO: Missing icon 'search'` comment. Never hallucinate raw SVG `<path d="...">` coordinates.
+5. **Image Layer Handling (`fills: [{ type: "IMAGE" }]`)**:
+   - Focus exclusively on applying the exact styling from the Figma spec: dimensions (`width`, `height`), border radius (`rounded-*`), and scale mode (`scaleMode: "FILL"` $\rightarrow$ `object-cover`, `"FIT"` $\rightarrow$ `object-contain`).
+   - Do **NOT** attempt to resolve, fetch, or hallucinate image files or external URLs (never invent Unsplash or third-party links).
+   - Render a standard `<img>` tag with `src=""` and a concise `TODO` comment specifying the target image:
+     ```tsx
+     {/* TODO: Add image source for 'User Avatar' (48x48) */}
+     <img src="" alt="User Avatar" className="w-12 h-12 rounded-full object-cover" />
+     ```
 
 ### Phase 4: Visual Cross-Check & Verification
 * **Optional Companion Image**: If the companion preview image (`.specs/<name>.png`) exists, inspect it to cross-check visual styling and icons.
@@ -87,7 +102,7 @@ The input `.specs/<name>.json` file contains a pruned AST of Figma nodes:
 
 | Field | Meaning | Code Mapping |
 | :--- | :--- | :--- |
-| `type` | Node type (`FRAME`, `INSTANCE`, `TEXT`, `VECTOR`) | Container (`div` / `section`), Component import, or Typography tag (`h1`-`p`). |
+| `type` | Node type (`FRAME`, `INSTANCE`, `TEXT`, `VECTOR`) | Container (`div` / `section`), Component import, Typography tag (`h1`-`p`), or Icon component/placeholder (see Icon Resolution Hierarchy). |
 | `layoutMode` | Auto-layout direction (`HORIZONTAL`, `VERTICAL`) | `flex flex-row` or `flex flex-col`. |
 | `itemSpacing` / `itemSpacingToken` | Gap between child items | `gap-*` class or `gap: Xpx`. |
 | `padding` / `paddingToken` | Object with `top`, `right`, `bottom`, `left` | `p-*`, `px-*`, `py-*` classes or `padding: ...`. |
@@ -95,3 +110,4 @@ The input `.specs/<name>.json` file contains a pruned AST of Figma nodes:
 | `component.name` | Master component name for an `INSTANCE` | Import name (e.g. `import { Button } from '@/components/ui/button'`). |
 | `props` | Normalized component variant and boolean properties | JSX/template props: `<Component {...props} />`. |
 | `bounds` | Render dimensions (`width`, `height`) | Sizing constraints (`w-*`, `h-*`, `max-w-*`). |
+| `fills` | Fill layers (`SOLID`, `IMAGE`, gradients) | Background color (`bg-*`), gradient, or styled `<img>` tag for `IMAGE` fills (see Image Layer Handling). |

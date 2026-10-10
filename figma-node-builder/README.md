@@ -42,8 +42,8 @@ flowchart LR
 When invoked, the agent systematically executes four phases:
 
 ### Phase 1: Codebase Discovery
-* Scans `package.json` to detect your framework (React, Vue, Svelte, Next.js, HTML/CSS).
-* Scans `components/` or `src/components/` for existing design system primitives (`Button`, `Input`, `Card`, `Badge`).
+* Scans `package.json` to detect your framework (React, Vue, Svelte, Next.js, HTML/CSS) and installed icon libraries (e.g. `lucide-react`, `@heroicons/react`).
+* Scans `components/` or `src/components/` for existing design system primitives (`Button`, `Input`, `Card`, `Badge`) and local icon directories (`components/icons/`, `src/assets/`, `public/`).
 * Inspects `tailwind.config.js` or CSS variables to discover configured design tokens.
 
 ### Phase 2: Gap Analysis & Token Mapping
@@ -56,6 +56,8 @@ When invoked, the agent systematically executes four phases:
 * Translates Auto-layout (`HORIZONTAL`, `VERTICAL`) directly into Flexbox (`flex-row`, `flex-col`, `gap`).
 * Replaces component instances with direct component imports (no `<div>` soup).
 * Applies semantic design tokens instead of hardcoded numbers.
+* Resolves icons and vectors through targeted local assets (`assets/`, `public/`, `components/`) or installed packages, eliminating hallucinated raw SVG paths.
+* Applies exact styling (dimensions, radius, object-cover) to image layers without attempting to resolve image files, leaving clean `<img>` tags with `TODO` markers.
 
 ### Phase 4: Visual Cross-Check
 * Inspects the companion `.specs/<name>.png` visual reference.

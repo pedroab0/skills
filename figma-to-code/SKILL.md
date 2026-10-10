@@ -184,7 +184,16 @@ When synthesizing code from the output:
    - `VERTICAL` $\rightarrow$ `flex flex-col` (`display: flex; flex-direction: column;`).
    - `itemSpacing` $\rightarrow$ CSS `gap`.
    - `primaryAxisAlignItems` & `counterAxisAlignItems` $\rightarrow$ `justify-*` and `items-*`.
-4. **Visual Verification**:
+4. **Icon & Vector Resolution Hierarchy**:
+   - For `VECTOR` nodes or icon instances, normalize the name (strip prefixes `icon/`, `ic_`, `ico-`).
+   - **Step 1 (Targeted Local Assets/Components)**: Look for matching files in `components/icons/`, `src/assets/`, or `public/` (e.g. `<SearchIcon />`, `/icons/search.svg`). Avoid unbounded repo searches.
+   - **Step 2 (Installed Icon Library)**: If not found, import from packages in `package.json` (e.g., `lucide-react`, `@heroicons/react`).
+   - **Step 3 (Semantic Fallback)**: If not found, render an accessible placeholder (`<span className="..." aria-hidden="true" />`) with a `TODO: Missing icon 'name'` comment. Never hallucinate raw SVG `<path d="...">` coordinates.
+5. **Image Layer Handling (`fills: [{ type: "IMAGE" }]`)**:
+   - Focus exclusively on applying the exact styling from the Figma spec: dimensions (`width`, `height`), border radius (`rounded-*`), and scale mode (`scaleMode: "FILL"` $\rightarrow$ `object-cover`, `"FIT"` $\rightarrow$ `object-contain`).
+   - Do **NOT** attempt to resolve, fetch, or hallucinate image files or external URLs (never invent Unsplash or third-party links).
+   - Render a standard `<img>` tag with `src=""` and a concise `TODO` comment specifying the target image layer.
+6. **Visual Verification**:
    - Inspect the downloaded preview image (`output.image.path`) to ensure pixel-perfect fidelity.
 
 ---
