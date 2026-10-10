@@ -40,6 +40,11 @@ flowchart TD
 * **Use `figma-to-code`** when you want fast execution: you provide a Figma URL, and the agent extracts and writes the component in one turn.
 * **Use `figma-extractor` + `figma-node-builder`** in formal Spec-Driven Development (SDD): the design specification is extracted to disk first (via CLI or the companion Figma Desktop plugin), reviewed/approved, and then systematically implemented into your design system without premature code edits.
 
+> [!TIP]
+> **Zero-API Figma Desktop Plugin**: To extract specifications directly inside Figma Desktop without API tokens or rate limits, use the companion **Figma Node JSON Extractor** plugin:
+> * **Figma Community (Recommended)**: Search for **Figma Node JSON Extractor** in Plugins.
+> * **Manual Manifest Import (Local Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from your installed skills folder (e.g. `~/.claude/skills/figma-extractor/figma-plugin/manifest.json` or `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`).
+
 ---
 
 ## Quick Install via `npx`
@@ -47,6 +52,10 @@ flowchart TD
 Install any or all skills into your favorite AI coding assistant with a single interactive command:
 
 ```bash
+# Recommended (npm registry):
+npx @pedroab0/skills
+
+# Or directly from GitHub:
 npx github:pedroab0/skills
 ```
 
@@ -66,13 +75,13 @@ The installer features a clean, interactive terminal UI:
 Or specify flags for fast, non-interactive setup:
 ```bash
 # Install all skills for Claude Code globally
-npx github:pedroab0/skills --agent claude --skill all
+npx @pedroab0/skills --agent claude --skill all
 
 # Install SDD skills for Google Antigravity
-npx github:pedroab0/skills --agent antigravity --skill figma-extractor,figma-node-builder
+npx @pedroab0/skills --agent antigravity --skill figma-extractor,figma-node-builder
 
 # Install one-shot coder for Cursor (.cursor/rules)
-npx github:pedroab0/skills --agent cursor --skill figma-to-code
+npx @pedroab0/skills --agent cursor --skill figma-to-code
 ```
 
 ---
@@ -122,12 +131,13 @@ In Cursor, reference skills via `.cursor/rules/` or mention them in Composer cha
 ---
 
 ### 4. Google Antigravity / Gemini CLI
-
-Symlink or copy the skills into your Antigravity skills directory:
+ 
+Symlink or copy the skills into your Antigravity skills directory (`~/.gemini/config/skills` for Antigravity 2.0, or legacy `~/.gemini/antigravity-cli/skills`):
 ```bash
-ln -s /path/to/skills/figma-to-code ~/.gemini/antigravity-cli/skills/figma-to-code
-ln -s /path/to/skills/figma-extractor ~/.gemini/antigravity-cli/skills/figma-extractor
-ln -s /path/to/skills/figma-node-builder ~/.gemini/antigravity-cli/skills/figma-node-builder
+mkdir -p ~/.gemini/config/skills
+ln -s /path/to/skills/figma-to-code ~/.gemini/config/skills/figma-to-code
+ln -s /path/to/skills/figma-extractor ~/.gemini/config/skills/figma-extractor
+ln -s /path/to/skills/figma-node-builder ~/.gemini/config/skills/figma-node-builder
 ```
 
 ---
