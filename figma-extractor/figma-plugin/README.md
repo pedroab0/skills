@@ -21,15 +21,21 @@ Inspect, copy, and export compact, design-system-aware Node JSON and high-resolu
 3. Search for **Figma Node JSON Extractor**.
 4. Click **Open in...** or **Save** to add it to your plugin library.
 
-### Option B: Manual Installation (Developer / Local Backup)
-If you are developing locally or running from this repository:
+### Option B: Manual Installation (Local / Offline Backup)
+To install the plugin directly from your local skills folder or repository:
 1. Open the **Figma Desktop app**.
 2. In the top-left menu, navigate to:
    $$\text{Plugins} \longrightarrow \text{Development} \longrightarrow \text{Import plugin from manifest...}$$
-3. Select this file from your disk:
-   ```text
-   figma-extractor/figma-plugin/manifest.json
-   ```
+3. Select `manifest.json` from your machine based on your setup:
+   * **Installed via `npx @pedroab0/skills` (Global)**:
+     * **Claude Code**: `~/.claude/skills/figma-extractor/figma-plugin/manifest.json`
+     * **Google Antigravity**: `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`
+     * **OpenCode**: `~/.config/opencode/skills/figma-extractor/figma-plugin/manifest.json`
+   * **Installed in local workspace (`--local`)**:
+     * `.claude/skills/figma-extractor/figma-plugin/manifest.json`
+     * `.gemini/skills/figma-extractor/figma-plugin/manifest.json`
+   * **Cloned Git repository**:
+     * `<repo-root>/figma-extractor/figma-plugin/manifest.json`
 4. The plugin is now permanently loaded under **Plugins** $\rightarrow$ **Development**.
 
 ---

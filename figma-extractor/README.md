@@ -136,7 +136,11 @@ node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens > ./.specs/tok
 For developers who prefer exporting specifications directly from Figma Desktop without configuring API access tokens or consuming REST API quotas:
 
 * **Published Figma Plugin (Recommended)**: Search for **Figma Node JSON Extractor** in Figma Community / Plugins and click **Open in...** or **Save**.
-* **Manual Local Installation (Developer Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `figma-extractor/figma-plugin/manifest.json`.
+* **Manual Local Installation (Local / Offline Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from your installed skills directory:
+  * **Claude Code**: `~/.claude/skills/figma-extractor/figma-plugin/manifest.json`
+  * **Google Antigravity**: `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`
+  * **OpenCode**: `~/.config/opencode/skills/figma-extractor/figma-plugin/manifest.json`
+  * **Cloned Git Repo**: `<repo-root>/figma-extractor/figma-plugin/manifest.json`
 * **Export Options**: Select any frame or component, then click:
   * **📋 Copy Node JSON**: Copies the clean AST specification to your clipboard.
   * **💾 .json**: Downloads `<name>.json`.
