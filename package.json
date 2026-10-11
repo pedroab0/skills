@@ -36,6 +36,7 @@
     "figma-to-code",
     "figma-extractor",
     "figma-node-builder",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ]
 }

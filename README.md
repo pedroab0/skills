@@ -1,5 +1,11 @@
 # Skills
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/@pedroab0/skills"><img src="https://img.shields.io/npm/dm/@pedroab0/skills.svg" alt="npm downloads" /></a>
+  <a href="https://www.npmjs.com/package/@pedroab0/skills"><img src="https://img.shields.io/npm/v/@pedroab0/skills.svg" alt="npm version" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+</p>
+
 A curated collection of modular, production-ready skills developed for AI coding agents (such as Claude Code, OpenCode, Codex, Google Antigravity, and Cursor).
 
 Each skill in this repository is designed to give AI assistants specialized, autonomous capabilities while maintaining:
@@ -40,10 +46,17 @@ flowchart TD
 * **Use `figma-to-code`** when you want fast execution: you provide a Figma URL, and the agent extracts and writes the component in one turn.
 * **Use `figma-extractor` + `figma-node-builder`** in formal Spec-Driven Development (SDD): the design specification is extracted to disk first (via CLI or the companion Figma Desktop plugin), reviewed/approved, and then systematically implemented into your design system without premature code edits.
 
-> [!TIP]
-> **Zero-API Figma Desktop Plugin**: To extract specifications directly inside Figma Desktop without API tokens or rate limits, use the companion **Figma Node JSON Extractor** plugin:
-> * **Figma Community (Recommended)**: Search for **Figma Node JSON Extractor** in Plugins.
-> * **Manual Manifest Import (Local Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from your installed skills folder (e.g. `~/.claude/skills/figma-extractor/figma-plugin/manifest.json` or `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`).
+---
+
+### Zero-API Companion: Figma Desktop Plugin
+
+<p align="center">
+  <img src="./figma-extractor/figma-plugin/assets/cover.png" alt="Figma Node JSON Extractor" width="100%" />
+</p>
+
+To extract specifications directly inside Figma Desktop without API tokens or rate limits, use the companion [**Figma Node JSON Extractor**](./figma-extractor/figma-plugin/README.md) plugin:
+* **Figma Community (Recommended)**: Search for **Figma Node JSON Extractor** in Plugins.
+* **Manual Manifest Import (Local Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from your installed skills folder (e.g. `~/.claude/skills/figma-extractor/figma-plugin/manifest.json` or `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`).
 
 ---
 
@@ -172,3 +185,10 @@ When adding new skills to this curation:
 3. Provide a `README.md` with detailed skill-specific documentation and manual execution flags.
 4. Keep scripts self-contained with minimal external dependencies.
 5. Update this root `README.md` catalog to list the new skill.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
