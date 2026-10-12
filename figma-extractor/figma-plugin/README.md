@@ -4,6 +4,12 @@
 
 # Figma Node JSON Extractor
 
+<p align="center">
+  <a href="https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor"><img src="https://img.shields.io/badge/Figma_Community-Figma_Node_JSON_Extractor-000000?style=flat&logo=figma&logoColor=white" alt="Figma Community Plugin" /></a>
+  <a href="https://www.npmjs.com/package/@pedroab0/skills"><img src="https://img.shields.io/npm/v/@pedroab0/skills.svg?label=@pedroab0/skills" alt="npm package" /></a>
+  <a href="../../LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+</p>
+
 Inspect, copy, and export compact, design-system-aware Node JSON and high-resolution companion preview images directly from **Figma Desktop** for AI coding assistants (Claude Code, Antigravity, Cursor) and frontend engineering.
 
 ---
@@ -20,10 +26,11 @@ Inspect, copy, and export compact, design-system-aware Node JSON and high-resolu
 ## Installation in Figma
 
 ### Option A: Install from Figma Community (Recommended)
-1. Open Figma (Desktop app or Web browser).
-2. Go to **Plugins** or the **Figma Community**.
-3. Search for **Figma Node JSON Extractor**.
-4. Click **Open in...** or **Save** to add it to your plugin library.
+Install directly from the Figma Community:
+👉 [**Install Figma Node JSON Extractor on Figma Community**](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor)
+
+1. Open the [plugin page on Figma Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) or search for **Figma Node JSON Extractor** in Figma Plugins.
+2. Click **Open in...** or **Save** to add it to your Figma account.
 
 ### Option B: Manual Installation (Local / Offline Backup)
 To install the plugin directly from your local skills folder or repository:

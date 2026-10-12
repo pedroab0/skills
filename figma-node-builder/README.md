@@ -31,7 +31,7 @@ flowchart LR
     C -->|2. figma-node-builder| D["Production Component<br/>(React, Vue, Tailwind)"]
 ```
 
-1. **Step 1 (Ingest)**: Design specifications are extracted into `./.specs/card.json` (and optional companion `./.specs/card.png`) using either [`figma-extractor`](../figma-extractor) (CLI / API) or the **Figma Node JSON Extractor** (Figma Desktop plugin).
+1. **Step 1 (Ingest)**: Design specifications are extracted into `./.specs/card.json` (and optional companion `./.specs/card.png`) using either [`figma-extractor`](../figma-extractor) (CLI / API) or the [Figma Node JSON Extractor](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) Figma plugin.
 2. **Review**: The human developer or architect reviews the tokens, components, and layout bounds.
 3. **Step 2 (Build)**: **`figma-node-builder`** is invoked to build the component in your project.
 

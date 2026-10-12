@@ -1,5 +1,11 @@
 # Figma Extractor
 
+<p align="center">
+  <a href="https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor"><img src="https://img.shields.io/badge/Figma_Community-Plugin-000000?style=flat&logo=figma&logoColor=white" alt="Figma Community Plugin" /></a>
+  <a href="https://www.npmjs.com/package/@pedroab0/skills"><img src="https://img.shields.io/npm/v/@pedroab0/skills.svg?label=@pedroab0/skills" alt="npm package" /></a>
+  <a href="../LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
+</p>
+
 A lightweight, zero-dependency Node.js CLI tool and agent skill that extracts design node metadata, component hierarchies, design tokens, and rendered preview images from Figma via the Figma REST API into `./.specs/`.
 
 This skill serves as the **Specification Ingestion Layer** in a **Spec-Driven Development (SDD)** workflow.
@@ -139,7 +145,7 @@ node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens > ./.specs/tok
 
 For developers who prefer exporting specifications directly from Figma Desktop without configuring API access tokens or consuming REST API quotas:
 
-* **Published Figma Plugin (Recommended)**: Search for **Figma Node JSON Extractor** in Figma Community / Plugins and click **Open in...** or **Save**.
+* **Published Figma Plugin (Recommended)**: Install [**Figma Node JSON Extractor** on Figma Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) directly, or search for it under Figma Plugins.
 * **Manual Local Installation (Local / Offline Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from your installed skills directory:
   * **Claude Code**: `~/.claude/skills/figma-extractor/figma-plugin/manifest.json`
   * **Google Antigravity**: `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`

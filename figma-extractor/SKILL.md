@@ -196,4 +196,4 @@ When an `INSTANCE` node is present, internal property hashes are converted into 
 - **Node Not Found**:
   - Alert the user that the node ID could not be found in the specified file.
 - **Rate Limited (`FIGMA_RATE_LIMIT_EXCEEDED` / `FIGMA_CIRCUIT_BREAKER_ACTIVE`)**:
-  - Figma REST API has per-minute and monthly rate limits on Starter plans. If quota is exhausted or circuit breaker trips, inform the user they can export the specification directly via the companion **Figma Node JSON Extractor** desktop plugin into `./.specs/<name>.json`.
+  - Figma REST API has per-minute and monthly rate limits on Starter plans. If quota is exhausted or circuit breaker trips, inform the user they can export the specification directly via the companion **Figma Node JSON Extractor** desktop plugin (available on [Figma Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor)) into `./.specs/<name>.json`.
