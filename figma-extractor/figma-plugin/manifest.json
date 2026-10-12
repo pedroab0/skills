@@ -1,10 +1,16 @@
 {
   "name": "Figma Node JSON Extractor",
-  "id": "figma-node-json-extractor",
+  "id": "1691244420692136789",
   "api": "1.0.0",
   "main": "code.js",
   "ui": "ui.html",
   "capabilities": [],
   "enableProposedApi": false,
-  "editorType": ["figma", "dev"]
+  "editorType": ["figma", "dev"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": [
+      "none"
+    ]
+  }
 }

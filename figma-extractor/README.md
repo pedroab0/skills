@@ -133,6 +133,10 @@ node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens > ./.specs/tok
 
 ## Zero-API Companion: Figma Node JSON Extractor (Figma Plugin)
 
+<p align="center">
+  <img src="./figma-plugin/assets/icon.png" alt="Figma Node JSON Extractor" width="200" />
+</p>
+
 For developers who prefer exporting specifications directly from Figma Desktop without configuring API access tokens or consuming REST API quotas:
 
 * **Published Figma Plugin (Recommended)**: Search for **Figma Node JSON Extractor** in Figma Community / Plugins and click **Open in...** or **Save**.

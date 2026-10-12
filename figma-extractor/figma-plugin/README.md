@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/icon.png" alt="Figma Node JSON Extractor Icon" width="256" />
+</p>
+
 # Figma Node JSON Extractor
 
 Inspect, copy, and export compact, design-system-aware Node JSON and high-resolution companion preview images directly from **Figma Desktop** for AI coding assistants (Claude Code, Antigravity, Cursor) and frontend engineering.
