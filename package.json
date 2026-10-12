@@ -1,6 +1,6 @@
 {
   "name": "@pedroab0/skills",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Curated collection of modular, production-ready skills for AI coding agents (Claude Code, Cursor, OpenCode, Antigravity)",
   "bin": {
     "skills": "bin/cli.js",
