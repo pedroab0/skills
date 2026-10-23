@@ -74,9 +74,15 @@ Choose one of the following terminal commands:
   ```bash
   export FIGMA_ACCESS_TOKEN="figd_your_token_here"
   ```
-- **Persist globally across all terminal sessions (`~/.zshrc`)**:
+- **Persist globally on macOS / Linux (`~/.zshrc`)**:
   ```bash
   echo 'export FIGMA_ACCESS_TOKEN="figd_your_token_here"' >> ~/.zshrc && source ~/.zshrc
+  ```
+- **Persist globally on Windows (PowerShell)**:
+  ```powershell
+  [Environment]::SetEnvironmentVariable("FIGMA_ACCESS_TOKEN", "figd_your_token_here", "User")
+  # Or inside your PowerShell profile ($PROFILE):
+  # $env:FIGMA_ACCESS_TOKEN="figd_your_token_here"
   ```
 
 *(Optional: If behind a corporate proxy with self-signed SSL certificates, run `echo 'FIGMA_IGNORE_SSL=true' >> .env`).*
@@ -88,7 +94,7 @@ Flags are **completely optional** — you do not have to specify any flags:
   - *"Inspect this frame and download a preview image"* (agent uses `--image` or `-i`).
   - *"Only extract the design tokens from this file"* (agent uses `--tokens`).
   - *"Collapse component sub-layers into props"* (agent uses `--shallow-instances`).
-- **Tip (Guarantee Autonomous Invocation)**: To ensure the agent never skips the extractor and never estimates CSS without extracting, add this suggestion to your project's `GEMINI.md` or `AGENTS.md`:
+- **Tip (Guarantee Autonomous Invocation)**: To ensure the agent never skips the extractor and never estimates CSS without extracting, add this suggestion to your project's agent instructions file (e.g., `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.kiro/steering/`, or `.cursor/rules/`):
   ```markdown
   ## Figma UI Development
   Whenever a Figma link is provided or you are asked to build UI from Figma:
@@ -142,9 +148,9 @@ node figma-to-code/scripts/fetch_figma.js "<FigmaURL>" -i --shallow-instances
 
 The skill includes the following resources:
 
-- **Agent Instruction Guide (`SKILL.md`)**: The core skill definition read by AI agents (Antigravity, Claude Code, Cursor, Codex) containing workflow triggers and pair-programming guidelines.
+- **Agent Instruction Guide (`SKILL.md`)**: The core skill definition read by AI agents (Claude Code, Kiro, Cursor, OpenCode, Codex, Antigravity) containing workflow triggers and pair-programming guidelines.
 - **Core Extraction Script (`scripts/fetch_figma.js`)**: The standalone, zero-dependency Node.js script that interfaces with the Figma REST API, resolves tokens, prunes the AST, and downloads preview images.
-- **Unit Test Suite (`scripts/test_fetch_figma.js`)**: A suite of 39 automated unit tests verifying URL parsing, token formatting, component prop cleaning, rate-limit gates, and node pruning without requiring network access.
+- **Unit Test Suite (`scripts/test_fetch_figma.js`)**: Automated unit tests verifying environment/profile parsing, URL parsing, token formatting, component prop cleaning, rate-limit gates, and node pruning without requiring network access.
 - **Specification Directory (`.specs/`)**: The local workspace directory where downloaded image previews are stored for multimodal visual inspection.
 - **Reference Documentation (`README.md`)**: This guide explaining architecture, MCP comparison, and operational flags.
 

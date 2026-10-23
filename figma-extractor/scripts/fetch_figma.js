@@ -11,27 +11,138 @@ const { URL } = require('url');
 // Environment and Auth Utilities
 // -----------------------------------------------------------------------------
 
-function loadEnv() {
-  const home = process.env.HOME || '';
-  const candidates = [
-    path.join(process.cwd(), '.env'),
-    home ? path.join(home, '.env') : null,
-    home ? path.join(home, '.zshrc') : null,
-    home ? path.join(home, '.bashrc') : null,
+function resolveHomeDir() {
+  return (
+    process.env.HOME ||
+    process.env.USERPROFILE ||
+    (typeof os.homedir === 'function' ? os.homedir() : '') ||
+    ''
+  );
+}
+
+function decodeEnvBuffer(buf) {
+  if (!Buffer.isBuffer(buf)) {
+    const str = String(buf || '');
+    return str.charCodeAt(0) === 0xfeff ? str.slice(1) : str;
+  }
+  if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe) {
+    return buf.toString('utf16le', 2);
+  }
+  const str = buf.toString('utf8');
+  return str.charCodeAt(0) === 0xfeff ? str.slice(1) : str;
+}
+
+function getPowerShellProfilePaths(home) {
+  const paths = [];
+  if (process.env.PROFILE && process.env.PROFILE.toLowerCase().endsWith('.ps1')) {
+    paths.push(process.env.PROFILE);
+  }
+
+  const docRoots = [];
+  if (home) {
+    docRoots.push(
+      path.join(home, 'Documents'),
+      path.join(home, 'Documentos'),
+      path.join(home, 'OneDrive', 'Documents'),
+      path.join(home, 'OneDrive', 'Documentos'),
+    );
+  }
+
+  const oneDriveEnvs = [
+    process.env.OneDrive,
+    process.env.OneDriveConsumer,
+    process.env.OneDriveCommercial,
   ].filter(Boolean);
 
-  for (const envPath of candidates) {
-    if (fs.existsSync(envPath)) {
+  for (const od of oneDriveEnvs) {
+    docRoots.push(path.join(od, 'Documents'), path.join(od, 'Documentos'));
+  }
+
+  const shellDirs = ['PowerShell', 'WindowsPowerShell'];
+  const profileFiles = [
+    'Microsoft.PowerShell_profile.ps1',
+    'Microsoft.VSCode_profile.ps1',
+    'profile.ps1',
+  ];
+
+  for (const docRoot of docRoots) {
+    if (!fs.existsSync(docRoot)) continue;
+    for (const shellDir of shellDirs) {
+      const fullShellDir = path.join(docRoot, shellDir);
+      if (!fs.existsSync(fullShellDir)) continue;
+      for (const profileFile of profileFiles) {
+        paths.push(path.join(fullShellDir, profileFile));
+      }
+    }
+  }
+
+  if (home) {
+    const xdgPsDir = path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), 'powershell');
+    if (fs.existsSync(xdgPsDir)) {
+      for (const profileFile of profileFiles) {
+        paths.push(path.join(xdgPsDir, profileFile));
+      }
+    }
+  }
+
+  return Array.from(new Set(paths));
+}
+
+function loadEnv(options = {}) {
+  const cwd = options.cwd || process.cwd();
+  const home = options.home !== undefined ? options.home : resolveHomeDir();
+
+  const dotEnvCandidates = [
+    path.join(cwd, '.env'),
+    path.join(cwd, '.env.local'),
+    home ? path.join(home, '.env') : null,
+  ].filter(Boolean);
+
+  const shellConfigCandidates = [
+    home ? path.join(home, '.zshrc') : null,
+    home ? path.join(home, '.zprofile') : null,
+    home ? path.join(home, '.zshenv') : null,
+    home ? path.join(home, '.bashrc') : null,
+    home ? path.join(home, '.bash_profile') : null,
+    home ? path.join(home, '.profile') : null,
+    ...getPowerShellProfilePaths(home),
+  ].filter(Boolean);
+
+  const seen = new Set();
+  const candidates = [];
+  for (const p of dotEnvCandidates) {
+    if (!seen.has(p)) {
+      seen.add(p);
+      candidates.push({ filePath: p, isShellConfig: false });
+    }
+  }
+  for (const p of shellConfigCandidates) {
+    if (!seen.has(p)) {
+      seen.add(p);
+      candidates.push({ filePath: p, isShellConfig: true });
+    }
+  }
+
+  for (const { filePath, isShellConfig } of candidates) {
+    if (fs.existsSync(filePath)) {
       try {
-        const envContent = fs.readFileSync(envPath, 'utf8');
-        const lines = envContent.split('\n');
+        const rawBuf = fs.readFileSync(filePath);
+        const envContent = decodeEnvBuffer(rawBuf);
+        if (isShellConfig && !/figma_/i.test(envContent)) {
+          continue;
+        }
+        const lines = envContent.split(/\r?\n/);
         for (const line of lines) {
+          if (isShellConfig && !/figma_/i.test(line)) {
+            continue;
+          }
           const parsed = parseEnvLine(line);
           if (parsed && parsed.key) {
+            const isFigmaVar = /^FIGMA_/i.test(parsed.key);
+            const envKey = isFigmaVar ? parsed.key.toUpperCase() : parsed.key;
             // For dot-env files, load any variable; for shell configs, only load FIGMA_ variables
-            const isShellConfig = envPath.endsWith('.zshrc') || envPath.endsWith('.bashrc');
-            if (!process.env[parsed.key] && (!isShellConfig || parsed.key.startsWith('FIGMA_'))) {
-              process.env[parsed.key] = parsed.val;
+            if (!process.env[envKey] && (!isShellConfig || isFigmaVar)) {
+              process.env[envKey] = parsed.val;
             }
           }
         }
@@ -44,16 +155,47 @@ function loadEnv() {
 
 function parseEnvLine(line) {
   if (!line || typeof line !== 'string') return null;
-  let trimmed = line.trim();
-  if (trimmed.startsWith('export ')) {
-    trimmed = trimmed.substring(7).trim();
+  let trimmed = line.replace(/^\uFEFF/, '').trim();
+  if (!trimmed || trimmed.startsWith('#')) {
+    return null;
   }
-  if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) {
+
+  // Handle PowerShell [Environment]::SetEnvironmentVariable("KEY", "VAL", ...)
+  const setEnvMatch = trimmed.match(
+    /^\[(?:System\.)?Environment\]::SetEnvironmentVariable\(\s*(['"])([A-Za-z_][A-Za-z0-9_]*)\1\s*,\s*(['"])([^'"]*)\3/i,
+  );
+  if (setEnvMatch) {
+    return { key: setEnvMatch[2], val: setEnvMatch[4] };
+  }
+
+  // Strip Unix 'export ' or Windows CMD 'set ' prefix (requires whitespace after keyword)
+  if (/^export\s+/i.test(trimmed)) {
+    trimmed = trimmed.replace(/^export\s+/i, '').trim();
+  } else if (/^set\s+/i.test(trimmed)) {
+    trimmed = trimmed.replace(/^set\s+/i, '').trim();
+    if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.includes('=')) {
+      trimmed = trimmed.slice(1, -1).trim();
+    }
+  }
+
+  if (!trimmed.includes('=')) {
     return null;
   }
 
   const eqIdx = trimmed.indexOf('=');
-  const key = trimmed.slice(0, eqIdx).trim();
+  let key = trimmed.slice(0, eqIdx).trim();
+
+  // Strip PowerShell $env:KEY or ${env:KEY} syntax
+  if (/^\$env:/i.test(key)) {
+    key = key.replace(/^\$env:/i, '').trim();
+  } else if (/^\$\{env:([^}]+)\}$/i.test(key)) {
+    key = key.replace(/^\$\{env:([^}]+)\}$/i, '$1').trim();
+  }
+
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+    return null;
+  }
+
   let rest = trimmed.slice(eqIdx + 1).trim();
 
   let val = '';
@@ -566,7 +708,7 @@ const MAX_REQUESTS_PER_WINDOW = 5; // Max 5 calls per minute (well below Figma 1
 const MIN_REQUEST_INTERVAL_MS = 2500; // Minimum 2.5s between consecutive requests
 
 function getRateGateFilePath() {
-  const home = process.env.HOME || (typeof os.homedir === 'function' ? os.homedir() : '');
+  const home = resolveHomeDir();
   return home ? path.join(home, '.figma_ratelimit.json') : path.join(process.cwd(), '.figma_ratelimit.json');
 }
 
@@ -1132,15 +1274,24 @@ async function main() {
         process.exit(1);
       }
       const { dictionary } = buildVariableMap(varsMeta);
-      console.log(
-        JSON.stringify(
-          {
-            tokens: dictionary,
-          },
-          null,
-          config.pretty ? 2 : 0,
-        ),
+      const tokenPayload = JSON.stringify(
+        {
+          tokens: dictionary,
+        },
+        null,
+        config.pretty ? 2 : 0,
       );
+      if (config.specJsonPath) {
+        const jsonDir = path.dirname(path.resolve(config.specJsonPath));
+        if (!fs.existsSync(jsonDir)) {
+          fs.mkdirSync(jsonDir, { recursive: true });
+        }
+        fs.writeFileSync(path.resolve(config.specJsonPath), tokenPayload, 'utf8');
+        const sizeKb = (Buffer.byteLength(tokenPayload, 'utf8') / 1024).toFixed(1);
+        console.log(`\n✔ Saved Figma design tokens to ${config.specJsonPath} (${sizeKb} KB)\n`);
+      } else {
+        console.log(tokenPayload);
+      }
       return;
     }
 
@@ -1236,7 +1387,7 @@ function formatApiError(error) {
   } else if (error.statusCode === 401 || error.statusCode === 403) {
     isTokenExpiredOrInvalid = true;
     errorMessage =
-      'FIGMA_TOKEN_EXPIRED_OR_INVALID: The provided Figma access token is expired, invalid, or unauthorized. Create a new token in Figma Settings -> Personal Access Tokens and export FIGMA_ACCESS_TOKEN or add it to .env.';
+      'FIGMA_TOKEN_EXPIRED_OR_INVALID: The provided Figma access token is expired, invalid, or unauthorized. Create a new token in Figma Settings -> Personal Access Tokens and set FIGMA_ACCESS_TOKEN in your environment or workspace .env file.';
   } else if (error.statusCode === 429) {
     isRateLimited = true;
     let retryMsg = ' Please wait 30-60 seconds before making more requests.';
@@ -1284,6 +1435,9 @@ function formatApiError(error) {
 
 // Export internal functions for unit testing
 module.exports = {
+  resolveHomeDir,
+  decodeEnvBuffer,
+  getPowerShellProfilePaths,
   loadEnv,
   parseEnvLine,
   getFigmaToken,

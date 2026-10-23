@@ -7,7 +7,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
 </p>
 
-A curated collection of modular, production-ready skills developed for AI coding agents (such as Claude Code, OpenCode, Codex, Google Antigravity, and Cursor).
+A curated collection of modular, production-ready skills developed for AI coding agents (such as Claude Code, OpenCode, Codex, Google Antigravity, Cursor, and Kiro).
 
 Each skill in this repository is designed to give AI assistants specialized, autonomous capabilities while maintaining:
 - **Token Efficiency**: Pruning unnecessary data and noise to keep agent context windows lean and fast.
@@ -57,7 +57,7 @@ flowchart TD
 
 To extract specifications directly inside Figma Desktop without API tokens or rate limits, use the companion [**Figma Node JSON Extractor**](./figma-extractor/figma-plugin/README.md) plugin:
 * **Figma Community (Recommended)**: Install [**Figma Node JSON Extractor** on Figma Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) directly, or search for it under Figma Plugins.
-* **Manual Manifest Import (Local Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from your installed skills folder (e.g. `~/.claude/skills/figma-extractor/figma-plugin/manifest.json` or `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`).
+* **Manual Manifest Import (Local Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from your installed skill directory (`<skill-dir>/figma-plugin/manifest.json`).
 
 ---
 
@@ -75,7 +75,7 @@ npx github:pedroab0/skills
 
 The installer features a clean, interactive terminal UI:
 * **Navigate**: Use keyboard arrows (`↑` / `↓`) or vim keys (`k` / `j`) to move between options.
-* **Select**: Press `[Enter]` or press number keys (`1` - `5`) to select directly.
+* **Select**: Press `[Enter]` or press number keys (`1` - `6`) to select directly.
 * **Exit**: Press `[ESC]` or `q` at any time to cancel cleanly.
 
 ### Selection Options & Presets
@@ -90,6 +90,9 @@ Or specify flags for fast, non-interactive setup:
 ```bash
 # Install all skills for Claude Code globally
 npx @pedroab0/skills --agent claude --skill all
+
+# Install SDD skills for Kiro (IDE & CLI)
+npx @pedroab0/skills --agent kiro --skill sdd
 
 # Install SDD skills for Google Antigravity
 npx @pedroab0/skills --agent antigravity --skill figma-extractor,figma-node-builder
@@ -153,6 +156,19 @@ ln -s /path/to/skills/figma-to-code ~/.gemini/config/skills/figma-to-code
 ln -s /path/to/skills/figma-extractor ~/.gemini/config/skills/figma-extractor
 ln -s /path/to/skills/figma-node-builder ~/.gemini/config/skills/figma-node-builder
 ```
+
+---
+
+### 5. Kiro
+
+Kiro discovers standard `SKILL.md` packages locally in `.kiro/skills/` or globally in `~/.kiro/skills/` (or `$KIRO_HOME/skills/`):
+```bash
+mkdir -p ~/.kiro/skills
+ln -s /path/to/skills/figma-to-code ~/.kiro/skills/figma-to-code
+ln -s /path/to/skills/figma-extractor ~/.kiro/skills/figma-extractor
+ln -s /path/to/skills/figma-node-builder ~/.kiro/skills/figma-node-builder
+```
+- **Activation**: Kiro loads matching skills automatically based on your prompt or explicitly via `/figma-extractor`, `/figma-node-builder`, and `/figma-to-code` in Kiro IDE chat or Kiro CLI.
 
 ---
 

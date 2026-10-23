@@ -39,14 +39,13 @@ Before writing any code, inspect the host project to ground your implementation:
 ### Phase 2: Gap Analysis & Token Mapping
 Analyze the input JSON spec (`.specs/<name>.json`).
 
-> **Tip**: Instead of reading the entire raw JSON AST into your context window, run the companion **Spec Inspector CLI** to get a compact summary:
+> **Tip**: Instead of reading the entire raw JSON AST into your context window, run the companion **Spec Inspector CLI** from this skill's directory (`<skill-dir>` is the folder containing this `SKILL.md` file; if loaded from `.cursor/rules/figma-node-builder.mdc`, use `.cursor/skills/figma-node-builder`):
 > ```bash
-> # Global Antigravity install:
-> node ~/.gemini/config/skills/figma-node-builder/scripts/inspect_spec.js .specs/<name>.json
-> # Or project local install:
-> node figma-node-builder/scripts/inspect_spec.js .specs/<name>.json
+> # Compact terminal summary (always quote the script path for Windows/macOS/Linux compatibility):
+> node "<skill-dir>/scripts/inspect_spec.js" .specs/<name>.json
+>
 > # Output Markdown directly for your implementation plan:
-> node <skill-dir>/scripts/inspect_spec.js .specs/<name>.json --markdown
+> node "<skill-dir>/scripts/inspect_spec.js" .specs/<name>.json --markdown
 > ```
 
 * **Component Instances**: For each node with `type: "INSTANCE"`, match `component.name` against existing codebase components. Extract its `props` (e.g., `{ variant: "outline", size: "lg", hasIcon: true }`).
@@ -54,10 +53,10 @@ Analyze the input JSON spec (`.specs/<name>.json`).
 * **Gaps**: Identify any sub-components that do not exist yet in the codebase and plan to scaffold them.
 
 ### Phase 3: Grounded Code Synthesis
-Generate component code strictly adhering to the node specification:
+Generate component code strictly adhering to the node specification and adapting syntax to the host project's detected stack (e.g., React, Vue, Svelte, Angular, or HTML/CSS):
 
 1. **Reusing Existing Components (Anti-Div Soup Rule)**:
-   - When an `INSTANCE` node matches an existing component, **import and render it directly**:
+   - When an `INSTANCE` node matches an existing component, **import and render it directly** (example in JSX — adapt to your framework):
      ```tsx
      // Correct:
      <Button variant="primary" size="large" hasIcon>Confirm Order</Button>

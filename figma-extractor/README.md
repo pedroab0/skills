@@ -82,9 +82,15 @@ Choose one of the following terminal commands:
   ```bash
   export FIGMA_ACCESS_TOKEN="figd_your_token_here"
   ```
-- **Persist globally across all terminal sessions (`~/.zshrc`)**:
+- **Persist globally on macOS / Linux (`~/.zshrc`)**:
   ```bash
   echo 'export FIGMA_ACCESS_TOKEN="figd_your_token_here"' >> ~/.zshrc && source ~/.zshrc
+  ```
+- **Persist globally on Windows (PowerShell)**:
+  ```powershell
+  [Environment]::SetEnvironmentVariable("FIGMA_ACCESS_TOKEN", "figd_your_token_here", "User")
+  # Or inside your PowerShell profile ($PROFILE):
+  # $env:FIGMA_ACCESS_TOKEN="figd_your_token_here"
   ```
 
 *(Optional: If behind a corporate proxy with self-signed SSL certificates, run `echo 'FIGMA_IGNORE_SSL=true' >> .env`).*
@@ -110,8 +116,8 @@ node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --spec card -i
 # Atomic extraction with shallow instances (collapses component internals into props)
 node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --spec card --shallow-instances
 
-# Extract only design tokens dictionary (colors, spacing, radii)
-node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens > ./.specs/tokens.json
+# Extract only design tokens dictionary into ./.specs/tokens.json
+node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens --spec tokens
 ```
 
 ---
@@ -146,10 +152,12 @@ node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens > ./.specs/tok
 For developers who prefer exporting specifications directly from Figma Desktop without configuring API access tokens or consuming REST API quotas:
 
 * **Published Figma Plugin (Recommended)**: Install [**Figma Node JSON Extractor** on Figma Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) directly, or search for it under Figma Plugins.
-* **Manual Local Installation (Local / Offline Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from your installed skills directory:
+* **Manual Local Installation (Local / Offline Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from your installed skills directory (`~` corresponds to `%USERPROFILE%` on Windows):
   * **Claude Code**: `~/.claude/skills/figma-extractor/figma-plugin/manifest.json`
-  * **Google Antigravity**: `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`
+  * **Cursor**: `.cursor/skills/figma-extractor/figma-plugin/manifest.json` (or `~/.cursor/skills/...`)
   * **OpenCode**: `~/.config/opencode/skills/figma-extractor/figma-plugin/manifest.json`
+  * **Google Antigravity**: `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`
+  * **Kiro**: `~/.kiro/skills/figma-extractor/figma-plugin/manifest.json`
   * **Cloned Git Repo**: `<repo-root>/figma-extractor/figma-plugin/manifest.json`
 * **Export Options**: Select any frame or component, then click:
   * **📋 Copy Node JSON**: Copies the clean AST specification to your clipboard.
@@ -165,7 +173,7 @@ The skill includes the following resources:
 
 - **Agent Instruction Guide (`SKILL.md`)**: The core skill definition read by AI agents containing workflow triggers and operational boundaries (spec ingestion only).
 - **Core Extraction Script (`scripts/fetch_figma.js`)**: The standalone, zero-dependency Node.js script that interfaces with the Figma REST API, resolves tokens, prunes the AST, and downloads preview images.
-- **Unit Test Suite (`scripts/test_fetch_figma.js`)**: A suite of 40 automated unit tests verifying URL parsing, token formatting, component prop cleaning, rate-limit gates, and node pruning without requiring network access.
+- **Unit Test Suite (`scripts/test_fetch_figma.js`)**: Automated unit tests verifying environment/profile parsing, URL parsing, token formatting, component prop cleaning, rate-limit gates, and node pruning without requiring network access.
 - **Companion Figma Plugin (`figma-plugin/`)**: Zero-API desktop exporter for extracting AST and previews directly inside Figma Desktop.
 - **Reference Documentation (`README.md`)**: This guide explaining architecture, comparison, and operational flags.
 

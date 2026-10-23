@@ -4,7 +4,9 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { execSync } = require('child_process');
 const {
+  decodeTextBuffer,
   resolveSpecPath,
   inspectSpec,
   formatTerminalReport,
@@ -141,8 +143,21 @@ try {
   } finally {
     process.chdir(origCwd);
   }
+
+  // 7. decodeTextBuffer & CLI UTF-8 BOM / UTF-16LE BOM resilience (Windows PowerShell 5.1 & Notepad)
+  const utf8BomFile = path.join(specsSubdir, 'utf8bom.json');
+  fs.writeFileSync(utf8BomFile, '\uFEFF' + JSON.stringify(mockSpec), 'utf8');
+  const utf16BomFile = path.join(specsSubdir, 'utf16le.json');
+  const utf16Buf = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(JSON.stringify(mockSpec), 'utf16le')]);
+  fs.writeFileSync(utf16BomFile, utf16Buf);
+
+  assert.strictEqual(JSON.parse(decodeTextBuffer(fs.readFileSync(utf8BomFile))).name, 'Product Card');
+  assert.strictEqual(JSON.parse(decodeTextBuffer(fs.readFileSync(utf16BomFile))).name, 'Product Card');
+  const cliOut = execSync(`node "${path.join(__dirname, 'inspect_spec.js')}" "${utf16BomFile}" --markdown`, { encoding: 'utf8' });
+  assert.ok(cliOut.includes('Product Card'));
+  console.log('  ✓ decodeTextBuffer & CLI: parses UTF-8 BOM and UTF-16LE BOM specs cleanly');
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-console.log('\nResults: 6/6 Spec Inspector tests passed.\n');
+console.log('\nResults: 7/7 Spec Inspector tests passed.\n');

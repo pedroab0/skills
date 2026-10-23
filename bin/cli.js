@@ -4,7 +4,7 @@
  * Skills Installer CLI
  * https://github.com/pedroab0/skills
  *
- * Install curated AI agent skills for Claude Code, Cursor, Antigravity, and OpenCode.
+ * Install curated AI agent skills for Claude Code, Cursor, Antigravity, OpenCode, and Kiro.
  * Usage: npx @pedroab0/skills [options]
  */
 
@@ -41,7 +41,7 @@ const ui = {
 
 function printBanner() {
   ui.header(`Skills Installer ${style.dim('(by @pedroab0)')}`);
-  ui.item(style.dim('Curated AI Agent Skills for Claude Code, Antigravity, Cursor & OpenCode'));
+  ui.item(style.dim('Curated AI Agent Skills for Claude Code, Antigravity, Cursor, Kiro & OpenCode'));
   ui.item(style.dim('https://github.com/pedroab0/skills'));
   ui.bar();
 }
@@ -53,7 +53,7 @@ ${style.bold('Usage:')}
   (or: npx github:pedroab0/skills [options])
 
 ${style.bold('Options:')}
-  --agent <name>       Target agent: claude, antigravity, cursor, opencode, all
+  --agent <name>       Target agent: claude, antigravity, cursor, kiro, opencode, all
   --skill <name>       Skill to install (or comma-separated, or "all", "sdd")
   --global             Install globally (available across all projects on your machine)
   --local              Install in current project workspace only
@@ -65,6 +65,7 @@ ${style.bold('Options:')}
 ${style.bold('Examples:')}
   npx @pedroab0/skills
   npx @pedroab0/skills --agent claude --skill all
+  npx @pedroab0/skills --agent kiro --skill sdd
   npx @pedroab0/skills --agent antigravity --skill figma-extractor,figma-node-builder
   npx @pedroab0/skills --dest ~/.claude/skills --skill figma-to-code
 `);
@@ -111,6 +112,11 @@ function getAvailableSkills() {
 
 function getAgentConfigs(cwd) {
   const home = os.homedir();
+  const kiroHome = process.env.KIRO_HOME
+    ? process.env.KIRO_HOME.replace(/^~(?=$|[\\/])/, home)
+    : path.join(home, '.kiro');
+  const xdgConfig = process.env.XDG_CONFIG_HOME || path.join(home, '.config');
+
   return {
     claude: {
       name: 'Claude Code',
@@ -132,11 +138,17 @@ function getAgentConfigs(cwd) {
       isDetected: fs.existsSync(path.join(cwd, '.cursor')) || fs.existsSync(path.join(home, '.cursor')),
       isCursorRule: true,
     },
+    kiro: {
+      name: 'Kiro',
+      globalPath: path.join(kiroHome, 'skills'),
+      localPath: path.join(cwd, '.kiro', 'skills'),
+      isDetected: fs.existsSync(kiroHome) || fs.existsSync(path.join(cwd, '.kiro')),
+    },
     opencode: {
       name: 'OpenCode',
-      globalPath: path.join(home, '.config', 'opencode', 'skills'),
+      globalPath: path.join(xdgConfig, 'opencode', 'skills'),
       localPath: path.join(cwd, '.opencode', 'skills'),
-      isDetected: fs.existsSync(path.join(home, '.config', 'opencode')),
+      isDetected: fs.existsSync(path.join(xdgConfig, 'opencode')),
     },
   };
 }
@@ -370,23 +382,118 @@ async function selectPrompt({ title, items, defaultIndex = 0, onConfirm }) {
 // Token Verification
 // -----------------------------------------------------------------------------
 
-function checkFigmaToken() {
-  if (process.env.FIGMA_ACCESS_TOKEN || process.env.FIGMA_TOKEN) {
+function decodeEnvBuffer(buf) {
+  if (!Buffer.isBuffer(buf)) {
+    const str = String(buf || '');
+    return str.charCodeAt(0) === 0xfeff ? str.slice(1) : str;
+  }
+  if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe) {
+    return buf.toString('utf16le', 2);
+  }
+  const str = buf.toString('utf8');
+  return str.charCodeAt(0) === 0xfeff ? str.slice(1) : str;
+}
+
+function getPowerShellProfilePaths(home) {
+  const paths = [];
+  if (process.env.PROFILE && process.env.PROFILE.toLowerCase().endsWith('.ps1')) {
+    paths.push(process.env.PROFILE);
+  }
+
+  const docRoots = [];
+  if (home) {
+    docRoots.push(
+      path.join(home, 'Documents'),
+      path.join(home, 'Documentos'),
+      path.join(home, 'OneDrive', 'Documents'),
+      path.join(home, 'OneDrive', 'Documentos'),
+    );
+  }
+
+  const oneDriveEnvs = [
+    process.env.OneDrive,
+    process.env.OneDriveConsumer,
+    process.env.OneDriveCommercial,
+  ].filter(Boolean);
+
+  for (const od of oneDriveEnvs) {
+    docRoots.push(path.join(od, 'Documents'), path.join(od, 'Documentos'));
+  }
+
+  const shellDirs = ['PowerShell', 'WindowsPowerShell'];
+  const profileFiles = [
+    'Microsoft.PowerShell_profile.ps1',
+    'Microsoft.VSCode_profile.ps1',
+    'profile.ps1',
+  ];
+
+  for (const docRoot of docRoots) {
+    if (!fs.existsSync(docRoot)) continue;
+    for (const shellDir of shellDirs) {
+      const fullShellDir = path.join(docRoot, shellDir);
+      if (!fs.existsSync(fullShellDir)) continue;
+      for (const profileFile of profileFiles) {
+        paths.push(path.join(fullShellDir, profileFile));
+      }
+    }
+  }
+
+  if (home) {
+    const xdgPsDir = path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), 'powershell');
+    if (fs.existsSync(xdgPsDir)) {
+      for (const profileFile of profileFiles) {
+        paths.push(path.join(xdgPsDir, profileFile));
+      }
+    }
+  }
+
+  return Array.from(new Set(paths));
+}
+
+function hasFigmaTokenInText(text) {
+  if (!text) return false;
+  const lines = text.split(/\r?\n/);
+  for (const rawLine of lines) {
+    const trimmed = rawLine.replace(/^\uFEFF/, '').trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    if (
+      /^(?:export\s+|set\s+"?|\$env:|\$\{env:)?(?:FIGMA_ACCESS_TOKEN|FIGMA_TOKEN)\}?[\s="']/i.test(trimmed) ||
+      /^\[(?:System\.)?Environment\]::SetEnvironmentVariable\(\s*['"](?:FIGMA_ACCESS_TOKEN|FIGMA_TOKEN)['"]/i.test(trimmed)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function checkFigmaToken(options = {}) {
+  const ignoreProcessEnv = Boolean(options.ignoreProcessEnv);
+  if (!ignoreProcessEnv && (process.env.FIGMA_ACCESS_TOKEN || process.env.FIGMA_TOKEN)) {
     return { found: true, source: 'environment variable' };
   }
-  const home = os.homedir();
-  const candidates = [
-    path.join(process.cwd(), '.env'),
-    path.join(process.cwd(), '.env.local'),
-    path.join(home, '.zshrc'),
-    path.join(home, '.bashrc'),
-    path.join(home, '.profile'),
-  ];
+  const cwd = options.cwd || process.cwd();
+  const home = options.home !== undefined ? options.home : (process.env.HOME || process.env.USERPROFILE || os.homedir());
+  const candidates = Array.from(
+    new Set(
+      [
+        path.join(cwd, '.env'),
+        path.join(cwd, '.env.local'),
+        home ? path.join(home, '.env') : null,
+        home ? path.join(home, '.zshrc') : null,
+        home ? path.join(home, '.zprofile') : null,
+        home ? path.join(home, '.zshenv') : null,
+        home ? path.join(home, '.bashrc') : null,
+        home ? path.join(home, '.bash_profile') : null,
+        home ? path.join(home, '.profile') : null,
+        ...getPowerShellProfilePaths(home),
+      ].filter(Boolean),
+    ),
+  );
   for (const c of candidates) {
     if (fs.existsSync(c)) {
       try {
-        const text = fs.readFileSync(c, 'utf8');
-        if (/FIGMA_ACCESS_TOKEN|FIGMA_TOKEN/.test(text)) {
+        const text = decodeEnvBuffer(fs.readFileSync(c));
+        if (hasFigmaTokenInText(text)) {
           return { found: true, source: path.basename(c) };
         }
       } catch (_) {}
@@ -415,14 +522,15 @@ function installSkill(skill, destDir, useSymlink = false, isCursor = false) {
     }
     fs.cpSync(skill.path, cursorSkillsDir, { recursive: true });
 
+    const rawSkillMd = fs.readFileSync(path.join(skill.path, 'SKILL.md'), 'utf8');
+    const skillBody = rawSkillMd.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n*/, '');
     const ruleFile = path.join(destDir, `${skill.name}.mdc`);
     const ruleContent = `---
 description: ${skill.description}
 globs: *
 ---
 
-${fs.readFileSync(path.join(skill.path, 'SKILL.md'), 'utf8')}
-`;
+${skillBody}`;
     fs.writeFileSync(ruleFile, ruleContent, 'utf8');
     return { targetPath: ruleFile, isCursorRule: true };
   }
@@ -433,7 +541,8 @@ ${fs.readFileSync(path.join(skill.path, 'SKILL.md'), 'utf8')}
 
   if (useSymlink) {
     try {
-      fs.symlinkSync(skill.path, targetPath, 'dir');
+      const symlinkType = process.platform === 'win32' ? 'junction' : 'dir';
+      fs.symlinkSync(skill.path, targetPath, symlinkType);
       return { targetPath, isSymlink: true };
     } catch (e) {
       fs.cpSync(skill.path, targetPath, { recursive: true });
@@ -589,30 +698,34 @@ async function main() {
   let targetDestinations = [];
 
   if (flagDest) {
+    const expandedDest = flagDest.replace(/^~(?=$|[\\/])/, os.homedir());
     targetDestinations.push({
       name: 'Custom Directory',
-      path: path.resolve(cwd, flagDest),
+      path: path.resolve(cwd, expandedDest),
       isCursor: false,
     });
   } else if (flagAgent) {
-    const isGlobal = flagScope !== 'local';
-    if (flagAgent === 'all') {
+    const normalizedAgent = flagAgent === 'kiro-ide' || flagAgent === 'kiro-cli' ? 'kiro' : flagAgent;
+    const resolveScopeIsGlobal = (agentKey) => (flagScope ? flagScope === 'global' : agentKey !== 'cursor');
+    if (normalizedAgent === 'all') {
       for (const [key, cfg] of Object.entries(agentConfigs)) {
+        const useGlobal = resolveScopeIsGlobal(key);
         targetDestinations.push({
           name: cfg.name,
-          path: isGlobal ? cfg.globalPath : cfg.localPath,
+          path: useGlobal ? cfg.globalPath : cfg.localPath,
           isCursor: !!cfg.isCursorRule,
         });
       }
-    } else if (agentConfigs[flagAgent]) {
-      const cfg = agentConfigs[flagAgent];
+    } else if (agentConfigs[normalizedAgent]) {
+      const cfg = agentConfigs[normalizedAgent];
+      const useGlobal = resolveScopeIsGlobal(normalizedAgent);
       targetDestinations.push({
         name: cfg.name,
-        path: isGlobal ? cfg.globalPath : cfg.localPath,
+        path: useGlobal ? cfg.globalPath : cfg.localPath,
         isCursor: !!cfg.isCursorRule,
       });
     } else {
-      console.error(style.yellow(`⚠ Unknown agent "${flagAgent}". Options: claude, antigravity, cursor, opencode, all`));
+      console.error(style.yellow(`⚠ Unknown agent "${flagAgent}". Options: claude, antigravity, cursor, kiro, opencode, all`));
       process.exit(1);
     }
   } else {
@@ -620,6 +733,7 @@ async function main() {
       { id: 'claude', ...agentConfigs.claude },
       { id: 'antigravity', ...agentConfigs.antigravity },
       { id: 'cursor', ...agentConfigs.cursor },
+      { id: 'kiro', ...agentConfigs.kiro },
       { id: 'opencode', ...agentConfigs.opencode },
       { id: 'all', name: 'All detected agents' },
     ];
@@ -639,8 +753,8 @@ async function main() {
       },
     });
 
-    // Scope selection (Global vs Local)
-    let isGlobal = true;
+    // Scope selection (Global vs Local — Cursor rules live in workspace .cursor/rules by default)
+    let isGlobal = selectedAgent.id !== 'cursor';
     if (selectedAgent.id !== 'cursor') {
       const scopeOptions = [
         {
@@ -668,9 +782,10 @@ async function main() {
     if (selectedAgent.id === 'all') {
       for (const [key, cfg] of Object.entries(agentConfigs)) {
         if (cfg.isDetected) {
+          const useGlobal = key === 'cursor' ? false : isGlobal;
           targetDestinations.push({
             name: cfg.name,
-            path: isGlobal ? cfg.globalPath : cfg.localPath,
+            path: useGlobal ? cfg.globalPath : cfg.localPath,
             isCursor: !!cfg.isCursorRule,
           });
         }
@@ -713,7 +828,12 @@ async function main() {
   } else {
     ui.item(`${style.yellow('⚠')} ${style.bold('FIGMA_ACCESS_TOKEN')} not detected.`);
     ui.item(`${style.dim('To scrape designs from Figma, set your token:')}`);
-    ui.item(`${style.cyan('export FIGMA_ACCESS_TOKEN="figd_your_token_here"')}`);
+    if (process.platform === 'win32') {
+      ui.item(`${style.cyan('[Environment]::SetEnvironmentVariable("FIGMA_ACCESS_TOKEN", "figd_your_token_here", "User")')}`);
+      ui.item(`${style.dim('or in PowerShell ($PROFILE): $env:FIGMA_ACCESS_TOKEN="figd_your_token_here"')}`);
+    } else {
+      ui.item(`${style.cyan('export FIGMA_ACCESS_TOKEN="figd_your_token_here"')}`);
+    }
     ui.item(`${style.dim('or add it to your project\'s .env file.')}`);
   }
   ui.bar();

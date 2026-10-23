@@ -10,7 +10,7 @@
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
 </p>
 
-Inspect, copy, and export compact, design-system-aware Node JSON and high-resolution companion preview images directly from **Figma Desktop** for AI coding assistants (Claude Code, Antigravity, Cursor) and frontend engineering.
+Inspect, copy, and export compact, design-system-aware Node JSON and high-resolution companion preview images directly from **Figma Desktop** for AI coding assistants (Claude Code, Kiro, Cursor, OpenCode, Antigravity) and frontend engineering.
 
 ---
 
@@ -37,14 +37,19 @@ To install the plugin directly from your local skills folder or repository:
 1. Open the **Figma Desktop app**.
 2. In the top-left menu, navigate to:
    $$\text{Plugins} \longrightarrow \text{Development} \longrightarrow \text{Import plugin from manifest...}$$
-3. Select `manifest.json` from your machine based on your setup:
+3. Select `manifest.json` from your machine based on your setup (`~` corresponds to `%USERPROFILE%` on Windows):
    * **Installed via `npx @pedroab0/skills` (Global)**:
      * **Claude Code**: `~/.claude/skills/figma-extractor/figma-plugin/manifest.json`
-     * **Google Antigravity**: `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`
+     * **Cursor**: `~/.cursor/skills/figma-extractor/figma-plugin/manifest.json`
      * **OpenCode**: `~/.config/opencode/skills/figma-extractor/figma-plugin/manifest.json`
+     * **Google Antigravity**: `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`
+     * **Kiro**: `~/.kiro/skills/figma-extractor/figma-plugin/manifest.json`
    * **Installed in local workspace (`--local`)**:
      * `.claude/skills/figma-extractor/figma-plugin/manifest.json`
+     * `.cursor/skills/figma-extractor/figma-plugin/manifest.json`
+     * `.opencode/skills/figma-extractor/figma-plugin/manifest.json`
      * `.gemini/skills/figma-extractor/figma-plugin/manifest.json`
+     * `.kiro/skills/figma-extractor/figma-plugin/manifest.json`
    * **Cloned Git repository**:
      * `<repo-root>/figma-extractor/figma-plugin/manifest.json`
 4. The plugin is now permanently loaded under **Plugins** $\rightarrow$ **Development**.
@@ -54,7 +59,7 @@ To install the plugin directly from your local skills folder or repository:
 ## How to Extract Node JSON
 
 1. **Select any frame or component** on your canvas (e.g., Transaction Card, Navbar, Modal).
-2. Right-click the element $\rightarrow$ **Plugins** $\rightarrow$ **Figma Node JSON Extractor** (or press `⌥ ⌘ P` to re-run).
+2. Right-click the element $\rightarrow$ **Plugins** $\rightarrow$ **Figma Node JSON Extractor** (or press `⌥ ⌘ P` on macOS / `Ctrl + Alt + P` on Windows to re-run).
 3. In the plugin popup, choose your export format:
    * **📋 Copy Node JSON**: Copies the clean AST specification directly to your clipboard (ready to paste into chat).
    * **💾 .json**: Downloads `<name>.json` containing layout, dimensions, tokens, and props.
@@ -72,7 +77,7 @@ To install the plugin directly from your local skills folder or repository:
 
 ## How to Tell Your Agent to Build the UI
 
-Once the specification is in `./.specs/`, simply instruct your agent in Antigravity, Claude Code, or Cursor:
+Once the specification is in `./.specs/`, simply instruct your agent in Claude Code, Kiro, Cursor, OpenCode, or Antigravity:
 
 ```text
 Build the component from .specs/card.json

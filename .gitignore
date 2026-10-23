@@ -33,6 +33,13 @@ coverage/
 **/*.tmp
 **/*.tmp.*
 
+# Local Agent Skill Installations (when testing CLI in repo)
+.claude/
+.cursor/
+.kiro/
+.opencode/
+.gemini/
+
 # OS & System Files
 .DS_Store
 Thumbs.db

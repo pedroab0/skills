@@ -28,8 +28,20 @@ const style = {
 };
 
 // -----------------------------------------------------------------------------
-// Path Resolution
+// Path & Encoding Resolution
 // -----------------------------------------------------------------------------
+
+function decodeTextBuffer(buf) {
+  if (!Buffer.isBuffer(buf)) {
+    const str = String(buf || '');
+    return str.charCodeAt(0) === 0xfeff ? str.slice(1) : str;
+  }
+  if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe) {
+    return buf.toString('utf16le', 2);
+  }
+  const str = buf.toString('utf8');
+  return str.charCodeAt(0) === 0xfeff ? str.slice(1) : str;
+}
 
 function resolveSpecPath(inputPath) {
   if (!inputPath || typeof inputPath !== 'string') {
@@ -480,7 +492,7 @@ function main() {
 
   try {
     const resolvedPath = resolveSpecPath(positional[0]);
-    const rawContent = fs.readFileSync(resolvedPath, 'utf8');
+    const rawContent = decodeTextBuffer(fs.readFileSync(resolvedPath));
     const parsedData = JSON.parse(rawContent);
 
     const inspection = inspectSpec(parsedData, resolvedPath);
@@ -507,6 +519,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  decodeTextBuffer,
   resolveSpecPath,
   inspectSpec,
   formatTerminalReport,

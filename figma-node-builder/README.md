@@ -67,7 +67,7 @@ When invoked, the agent systematically executes four phases:
 
 ## How to Use the Skill
 
-Simply prompt your AI coding assistant (Claude Code, Cursor, OpenCode, Codex, or Antigravity):
+Simply prompt your AI coding assistant (Claude Code, Kiro, Cursor, OpenCode, Codex, or Antigravity):
 
 ```text
 "Build the component from .specs/transaction-card.json using .specs/transaction-card.png as visual reference"

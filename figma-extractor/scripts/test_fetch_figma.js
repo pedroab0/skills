@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const {
+  decodeEnvBuffer,
   loadEnv,
   parseEnvLine,
   parseFigmaUrl,
@@ -68,6 +72,88 @@ test('parseEnvLine: returns null for comments, empty lines, and lines without eq
   assert.strictEqual(parseEnvLine('# FIGMA_TOKEN=123'), null);
   assert.strictEqual(parseEnvLine(''), null);
   assert.strictEqual(parseEnvLine('export FIGMA_TOKEN'), null);
+});
+
+test('parseEnvLine: parses Windows PowerShell $env: syntax, CRLF, and SetEnvironmentVariable', () => {
+  assert.deepStrictEqual(
+    parseEnvLine('$env:FIGMA_ACCESS_TOKEN="figd_win_ps1"\r\n'),
+    { key: 'FIGMA_ACCESS_TOKEN', val: 'figd_win_ps1' }
+  );
+  assert.deepStrictEqual(
+    parseEnvLine("$Env:FIGMA_ACCESS_TOKEN = 'figd_win_single' # ps comment\r\n"),
+    { key: 'FIGMA_ACCESS_TOKEN', val: 'figd_win_single' }
+  );
+  assert.deepStrictEqual(
+    parseEnvLine('${env:FIGMA_TOKEN}="figd_braced"'),
+    { key: 'FIGMA_TOKEN', val: 'figd_braced' }
+  );
+  assert.deepStrictEqual(
+    parseEnvLine('[System.Environment]::SetEnvironmentVariable("FIGMA_ACCESS_TOKEN", "figd_sys_env", "User")'),
+    { key: 'FIGMA_ACCESS_TOKEN', val: 'figd_sys_env' }
+  );
+});
+
+test('parseEnvLine: parses Windows CMD set syntax without corrupting SETTINGS/EXPORT keys', () => {
+  assert.deepStrictEqual(
+    parseEnvLine('set FIGMA_ACCESS_TOKEN=figd_cmd_plain\r\n'),
+    { key: 'FIGMA_ACCESS_TOKEN', val: 'figd_cmd_plain' }
+  );
+  assert.deepStrictEqual(
+    parseEnvLine('set "FIGMA_ACCESS_TOKEN=figd_cmd_quoted"'),
+    { key: 'FIGMA_ACCESS_TOKEN', val: 'figd_cmd_quoted' }
+  );
+  assert.deepStrictEqual(
+    parseEnvLine('SETTINGS=enabled'),
+    { key: 'SETTINGS', val: 'enabled' }
+  );
+  assert.deepStrictEqual(
+    parseEnvLine('EXPORT_MODE=fast'),
+    { key: 'EXPORT_MODE', val: 'fast' }
+  );
+  // Arbitrary PowerShell local variables must not parse as env identifiers
+  assert.strictEqual(parseEnvLine('$MaximumHistoryCount = 4096'), null);
+});
+
+test('loadEnv & decodeEnvBuffer: loads FIGMA_ vars from UTF-16LE PowerShell profile and ignores non-FIGMA_ vars', () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'figma-win-env-'));
+  const savedAccess = process.env.FIGMA_ACCESS_TOKEN;
+  const savedOther = process.env.UNRELATED_PS_SECRET;
+  delete process.env.FIGMA_ACCESS_TOKEN;
+  delete process.env.UNRELATED_PS_SECRET;
+
+  try {
+    const psDir = path.join(tmpRoot, 'OneDrive', 'Documentos', 'WindowsPowerShell');
+    fs.mkdirSync(psDir, { recursive: true });
+    const psFile = path.join(psDir, 'Microsoft.PowerShell_profile.ps1');
+
+    const psContent = '$env:FIGMA_ACCESS_TOKEN="figd_utf16_powershell"\r\n$env:UNRELATED_PS_SECRET="should_not_leak"\r\n';
+    const utf16WithBom = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(psContent, 'utf16le')]);
+    fs.writeFileSync(psFile, utf16WithBom);
+
+    assert.ok(decodeEnvBuffer(utf16WithBom).includes('figd_utf16_powershell'));
+
+    loadEnv({ cwd: tmpRoot, home: tmpRoot });
+    assert.strictEqual(process.env.FIGMA_ACCESS_TOKEN, 'figd_utf16_powershell');
+    assert.strictEqual(process.env.UNRELATED_PS_SECRET, undefined);
+
+    // Case-insensitive PowerShell $env:figma_access_token normalization
+    delete process.env.FIGMA_ACCESS_TOKEN;
+    fs.writeFileSync(psFile, '$env:figma_access_token="figd_lowercase_ps"\r\n', 'utf8');
+    loadEnv({ cwd: tmpRoot, home: tmpRoot });
+    assert.strictEqual(process.env.FIGMA_ACCESS_TOKEN, 'figd_lowercase_ps');
+
+    // Workspace .env must take precedence over shell profile
+    delete process.env.FIGMA_ACCESS_TOKEN;
+    fs.writeFileSync(path.join(tmpRoot, '.env'), 'FIGMA_ACCESS_TOKEN="figd_from_dotenv"\n', 'utf8');
+    loadEnv({ cwd: tmpRoot, home: tmpRoot });
+    assert.strictEqual(process.env.FIGMA_ACCESS_TOKEN, 'figd_from_dotenv');
+  } finally {
+    if (savedAccess !== undefined) process.env.FIGMA_ACCESS_TOKEN = savedAccess;
+    else delete process.env.FIGMA_ACCESS_TOKEN;
+    if (savedOther !== undefined) process.env.UNRELATED_PS_SECRET = savedOther;
+    else delete process.env.UNRELATED_PS_SECRET;
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
 });
 
 // 1. URL Parsing Tests
@@ -342,8 +428,8 @@ test('parseArguments: --spec sets atomic specJsonPath and companion imagePath', 
   const argv = ['node', 'fetch_figma.js', 'https://www.figma.com/design/xyz123/Test?node-id=1-2', '--spec', 'card'];
   const res = parseArguments(argv);
   assert.strictEqual(res.specName, 'card');
-  assert.strictEqual(res.specJsonPath, '.specs/card.json');
-  assert.strictEqual(res.imagePath, '.specs/card.png');
+  assert.strictEqual(res.specJsonPath, path.join('.specs', 'card.json'));
+  assert.strictEqual(res.imagePath, path.join('.specs', 'card.png'));
   assert.strictEqual(res.downloadImage, false, 'Default --spec must NOT download image to conserve Tier 1 quota');
 
   const argvWithImage = ['node', 'fetch_figma.js', 'https://www.figma.com/design/xyz123/Test?node-id=1-2', '--spec', 'card', '-i'];
@@ -353,8 +439,8 @@ test('parseArguments: --spec sets atomic specJsonPath and companion imagePath', 
 
   const argvCustom = ['node', 'fetch_figma.js', 'xyz123', '1:2', '--spec', 'custom/dir/navbar.json'];
   const resCustom = parseArguments(argvCustom);
-  assert.strictEqual(resCustom.specJsonPath, 'custom/dir/navbar.json');
-  assert.strictEqual(resCustom.imagePath, 'custom/dir/navbar.png');
+  assert.strictEqual(resCustom.specJsonPath, path.join('custom', 'dir', 'navbar.json'));
+  assert.strictEqual(resCustom.imagePath, path.join('custom', 'dir', 'navbar.png'));
   assert.strictEqual(resCustom.downloadImage, false);
 });
 

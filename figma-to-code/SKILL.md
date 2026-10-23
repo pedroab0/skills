@@ -17,7 +17,7 @@ This skill connects to the Figma REST API, extracts a compact design-system-awar
 > **NEVER use browser tools (Playwright, Puppeteer, Chrome DevTools, `browser_navigate`, `read_browser_page`) on Figma URLs.**
 >
 > 1. **Figma Canvas is WebGL/Wasm**: Figma renders design canvas elements inside an HTML5 `<canvas>` via WebAssembly. There are NO inspectable HTML DOM elements for frames, layers, texts, or styles. Browser automation cannot extract Figma nodes or properties.
-> 2. **Never search `/Applications` for browsers**: Do not search for installed browser binaries or run browser automation scripts.
+> 2. **Never search for local browser binaries**: Do not search OS application directories (e.g., `/Applications`, `Program Files`, `/usr/bin`) or run browser automation scripts.
 > 3. **API Errors Are Final**: If `fetch_figma.js` returns an API error (e.g., 401 Unauthorized, 403 Forbidden, or 429 Rate Limited), **report the error directly to the user**. Guide them to check their `FIGMA_ACCESS_TOKEN`, permissions, or wait out rate limits. Do NOT attempt browser scraping fallbacks.
 
 ---
@@ -27,7 +27,7 @@ This skill connects to the Figma REST API, extracts a compact design-system-awar
 To protect your Figma file quota and prevent lockout penalties, `fetch_figma.js` enforces an automatic safety gate:
 * **Max 5 requests per minute** per file key (sliding window limit).
 * **2.5s inter-request pacing** between consecutive requests.
-* **Persistent Circuit Breaker**: If Figma returns HTTP 429, the script records the lockout time locally in `~/.figma_ratelimit.json`. All future calls to that file key are **immediately blocked with zero network traffic**, preventing Figma from extending the lockout penalty.
+* **Persistent Circuit Breaker**: If Figma returns HTTP 429, the script records the lockout time locally in `.figma_ratelimit.json` inside the user's home directory. All future calls to that file key are **immediately blocked with zero network traffic**, preventing Figma from extending the lockout penalty.
 
 ### Agent Behavioral Rules (Zero-Hammer Protocol)
 1. **Single-Shot Execution**: Run `fetch_figma.js` **once** per target frame or component.
@@ -41,7 +41,9 @@ To protect your Figma file quota and prevent lockout penalties, `fetch_figma.js`
 A Figma Access Token (Personal Access Token or OAuth Token) is required.
 
 Configure it using either:
-1. **Environment Variable**: `export FIGMA_ACCESS_TOKEN="figd_your_token_here"` or `export FIGMA_TOKEN="..."`
+1. **Environment Variable**:
+   - **macOS / Linux**: `export FIGMA_ACCESS_TOKEN="figd_your_token_here"` (or `FIGMA_TOKEN`)
+   - **Windows (PowerShell)**: `[Environment]::SetEnvironmentVariable("FIGMA_ACCESS_TOKEN", "figd_your_token_here", "User")` or `$env:FIGMA_ACCESS_TOKEN="figd_your_token_here"` in `$PROFILE`
 2. **Workspace `.env` File**:
    ```env
    FIGMA_ACCESS_TOKEN=figd_your_token_here
@@ -66,20 +68,20 @@ FIGMA_IGNORE_SSL=true
 
 ## Agent Execution Instructions
 
-To extract and build UI from a Figma URL, run `fetch_figma.js` from the skill's scripts directory:
+To extract and build UI from a Figma URL, run `fetch_figma.js` from this skill's `scripts/` directory:
 
 ```bash
 # Recommended: Extract compact AST (1 Tier 1 call)
-node <skill-dir>/scripts/fetch_figma.js "<FigmaURL>"
+node "<skill-dir>/scripts/fetch_figma.js" "<FigmaURL>"
 
 # Optional: With companion preview image (2 Tier 1 calls)
-node <skill-dir>/scripts/fetch_figma.js "<FigmaURL>" -i
+node "<skill-dir>/scripts/fetch_figma.js" "<FigmaURL>" -i
 ```
 
-**Script Path Resolution**:
-- **Global Antigravity install**: `node ~/.gemini/config/skills/figma-to-code/scripts/fetch_figma.js "<FigmaURL>"`
-- **Global Claude Code install**: `node ~/.claude/skills/figma-to-code/scripts/fetch_figma.js "<FigmaURL>"`
-- **Project local install**: `node figma-to-code/scripts/fetch_figma.js "<FigmaURL>"`
+**Resolving `<skill-dir>` (Agent-Agnostic)**:
+Substitute `<skill-dir>` with the directory where this skill is installed — **never guess another agent's folder** (always keep double quotes around the script path for Windows/macOS/Linux compatibility):
+- **Standard Skills (`SKILL.md`)**: `<skill-dir>` is the exact parent directory of this `SKILL.md` file.
+- **Cursor Rule (`.cursor/rules/figma-to-code.mdc`)**: `<skill-dir>` is the sibling `.cursor/skills/figma-to-code` directory (replace `rules/figma-to-code.mdc` with `skills/figma-to-code`).
 
 ---
 
@@ -89,13 +91,13 @@ node <skill-dir>/scripts/fetch_figma.js "<FigmaURL>" -i
 
 ```bash
 # Standard extraction (1 Tier 1 call - recommended)
-node figma-to-code/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474"
+node "<skill-dir>/scripts/fetch_figma.js" "https://www.figma.com/design/:fileKey/:name?node-id=4023-474"
 
 # Optional: With preview image (2 Tier 1 calls)
-node figma-to-code/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" -i
+node "<skill-dir>/scripts/fetch_figma.js" "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" -i
 
 # Collapse internal layers of component instances into props (guides agent to reuse existing components)
-node figma-to-code/scripts/fetch_figma.js "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --shallow-instances
+node "<skill-dir>/scripts/fetch_figma.js" "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --shallow-instances
 ```
 
 ### 2. CLI Flags Reference
@@ -169,7 +171,7 @@ When an `INSTANCE` node is present, internal property hashes are converted into 
 
 ## How to Build Components from the Extracted Data
 
-When synthesizing code from the output:
+When synthesizing code from the output (always adapting syntax, attributes, and styling conventions to the project's detected stack — e.g., React, Vue, Svelte, Angular, or plain HTML/CSS):
 
 1. **Using Existing UI Components**:
    - For `INSTANCE` nodes with resolved `component.name` and `props`:
@@ -202,10 +204,10 @@ When synthesizing code from the output:
 
 - **Token Expired / Missing (`FIGMA_TOKEN_EXPIRED_OR_INVALID` / `isTokenExpiredOrInvalid`)**:
   - Alert the user that their Figma access token is missing, invalid, or expired.
-  - Instruct the user to create a token in **Figma Settings $\rightarrow$ Personal Access Tokens** and export `FIGMA_ACCESS_TOKEN=your_token` or update `.env`.
+  - Instruct the user to create a token in **Figma Settings $\rightarrow$ Personal Access Tokens** and configure `FIGMA_ACCESS_TOKEN` in their environment or workspace `.env` file.
 - **Node Not Found**:
   - Alert the user that the node ID could not be found in the specified file.
 - **Corporate Proxy / Self-Signed SSL (`FIGMA_SSL_CERTIFICATE_ERROR`)**:
-  - Instruct the user to add `FIGMA_IGNORE_SSL=true` to `.env` or export it in their environment.
+  - Instruct the user to add `FIGMA_IGNORE_SSL=true` to `.env` or set it in their environment.
 - **Rate Limited (`FIGMA_RATE_LIMIT_EXCEEDED` / `FIGMA_CIRCUIT_BREAKER_ACTIVE`)**:
   - Figma REST API has strict per-minute and monthly rate limits. If rate limited or the circuit breaker trips, report the cooldown to the user and suggest duplicating the file in Figma Drafts to get a fresh URL.
