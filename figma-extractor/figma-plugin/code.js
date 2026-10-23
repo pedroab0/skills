@@ -402,6 +402,6 @@ figma.ui.onmessage = async (msg) => {
   if (msg.type === 'REFRESH') {
     exportCurrentSelection();
   } else if (msg.type === 'NOTIFY') {
-    figma.notify(msg.message);
+    figma.notify(msg.message, msg.error ? { error: true } : undefined);
   }
 };

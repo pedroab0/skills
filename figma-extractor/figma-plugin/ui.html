@@ -261,14 +261,72 @@
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     }
 
-    function flashButton(btn, text) {
-      const original = btn.innerHTML;
+    function flashButton(btn, text, bgOverride = '') {
+      if (!btn.dataset.originalHtml) {
+        btn.dataset.originalHtml = btn.innerHTML;
+      }
+      if (btn._flashTimer) {
+        clearTimeout(btn._flashTimer);
+      }
       btn.innerHTML = `<span>${text}</span>`;
-      btn.style.borderColor = '#10b981';
-      setTimeout(() => {
-        btn.innerHTML = original;
+      if (bgOverride) {
+        btn.style.background = bgOverride;
+      } else {
+        btn.style.borderColor = '#10b981';
+      }
+      btn._flashTimer = setTimeout(() => {
+        btn.innerHTML = btn.dataset.originalHtml;
+        btn.style.background = '';
         btn.style.borderColor = '';
-      }, 1500);
+        btn._flashTimer = null;
+      }, 1800);
+    }
+
+    // Figma plugin UI runs inside a null-origin sandboxed iframe where navigator.clipboard
+    // is blocked by Permissions-Policy. Synchronous execCommand('copy') is the official
+    // cross-browser / Figma Desktop clipboard mechanism, with Async Clipboard as fallback.
+    function copyUsingExecCommand(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.top = '0';
+      textarea.style.left = '0';
+      textarea.style.width = '1px';
+      textarea.style.height = '1px';
+      textarea.style.padding = '0';
+      textarea.style.border = 'none';
+      textarea.style.outline = 'none';
+      textarea.style.boxShadow = 'none';
+      textarea.style.background = 'transparent';
+      textarea.style.opacity = '0';
+      textarea.style.pointerEvents = 'none';
+      document.body.appendChild(textarea);
+      textarea.focus({ preventScroll: true });
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+      let copied = false;
+      try {
+        copied = document.execCommand('copy');
+      } catch (_) {
+        copied = false;
+      } finally {
+        document.body.removeChild(textarea);
+      }
+      return copied;
+    }
+
+    async function copyTextToClipboard(text) {
+      if (copyUsingExecCommand(text)) {
+        return true;
+      }
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (_) {}
+      }
+      return false;
     }
 
     // Pure vanilla zero-dependency ZIP archive creator (Store format)
@@ -418,19 +476,14 @@
     document.getElementById('btn-copy').onclick = async () => {
       if (!currentData) return;
       const jsonStr = JSON.stringify(currentData.spec, null, 2);
-      try {
-        await navigator.clipboard.writeText(jsonStr);
-        const btn = document.getElementById('btn-copy');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<span>✔ Copied Node JSON!</span>';
-        btn.style.background = '#16a34a';
+      const btn = document.getElementById('btn-copy');
+      const ok = await copyTextToClipboard(jsonStr);
+      if (ok) {
+        flashButton(btn, '✔ Copied Node JSON!', '#16a34a');
         parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: `Copied "${currentData.name}.json" to clipboard!` } }, '*');
-        setTimeout(() => {
-          btn.innerHTML = originalText;
-          btn.style.background = '';
-        }, 2000);
-      } catch (err) {
-        console.error('Clipboard failed', err);
+      } else {
+        flashButton(btn, '✖ Copy failed — use .json', '#dc2626');
+        parent.postMessage({ pluginMessage: { type: 'NOTIFY', message: 'Failed to access clipboard. Please download .json instead.', error: true } }, '*');
       }
     };
 
