@@ -41,6 +41,11 @@
     "figma-extractor",
     "figma-node-builder",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "!**/demo/**",
+    "!**/demos/**",
+    "!**/.specs/**",
+    "!**/test_*.js",
+    "!**/figma-plugin/assets/**"
   ]
 }

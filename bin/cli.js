@@ -506,12 +506,32 @@ function checkFigmaToken(options = {}) {
 // Skill Installation Logic
 // -----------------------------------------------------------------------------
 
+const EXCLUDED_SKILL_DIRS = new Set(['demo', 'demos', '.specs', 'node_modules', '.git']);
+
+function shouldCopySkillEntry(rootSkillPath) {
+  return (srcPath) => {
+    const rel = path.relative(rootSkillPath, srcPath);
+    if (!rel) return true;
+    const parts = rel.split(/[\\/]/);
+    const base = parts[parts.length - 1];
+    if (base === '.DS_Store' || base === 'Thumbs.db' || /^test_.*\.js$/i.test(base)) {
+      return false;
+    }
+    for (let i = 0; i < parts.length; i++) {
+      if (EXCLUDED_SKILL_DIRS.has(parts[i])) return false;
+      if (parts[i] === 'figma-plugin' && parts[i + 1] === 'assets') return false;
+    }
+    return true;
+  };
+}
+
 function installSkill(skill, destDir, useSymlink = false, isCursor = false) {
   if (!fs.existsSync(destDir)) {
     fs.mkdirSync(destDir, { recursive: true });
   }
 
   const targetPath = path.join(destDir, skill.name);
+  const copyFilter = shouldCopySkillEntry(skill.path);
 
   if (isCursor) {
     const cursorSkillsDir = path.join(path.dirname(destDir), 'skills', skill.name);
@@ -520,7 +540,7 @@ function installSkill(skill, destDir, useSymlink = false, isCursor = false) {
     if (fs.existsSync(cursorSkillsDir)) {
       fs.rmSync(cursorSkillsDir, { recursive: true, force: true });
     }
-    fs.cpSync(skill.path, cursorSkillsDir, { recursive: true });
+    fs.cpSync(skill.path, cursorSkillsDir, { recursive: true, filter: copyFilter });
 
     const rawSkillMd = fs.readFileSync(path.join(skill.path, 'SKILL.md'), 'utf8');
     const skillBody = rawSkillMd.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n*/, '');
@@ -545,11 +565,11 @@ ${skillBody}`;
       fs.symlinkSync(skill.path, targetPath, symlinkType);
       return { targetPath, isSymlink: true };
     } catch (e) {
-      fs.cpSync(skill.path, targetPath, { recursive: true });
+      fs.cpSync(skill.path, targetPath, { recursive: true, filter: copyFilter });
       return { targetPath, isSymlink: false };
     }
   } else {
-    fs.cpSync(skill.path, targetPath, { recursive: true });
+    fs.cpSync(skill.path, targetPath, { recursive: true, filter: copyFilter });
     const scriptsDir = path.join(targetPath, 'scripts');
     if (fs.existsSync(scriptsDir)) {
       try {

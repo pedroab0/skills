@@ -4,17 +4,17 @@
 !.env.example
 
 # Skill Demo / Test Applications (at any skill level)
-/**/demo/
-/**/demos/
-/**/demo-*/
-/**/*-demo/
-/**/test-app/
-/**/test-apps/
-/**/sample-app/
-/**/example-app/
-/**/playground/
-/**/app/
-/**/apps/
+**/demo/
+**/demos/
+**/demo-*/
+**/*-demo/
+**/test-app/
+**/test-apps/
+**/sample-app/
+**/example-app/
+**/playground/
+**/app/
+**/apps/
 
 # Dependencies & Build Artifacts
 node_modules/

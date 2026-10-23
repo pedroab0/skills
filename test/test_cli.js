@@ -33,8 +33,12 @@ try {
   const figmaExtractor = skills.find((s) => s.name === 'figma-extractor');
   const res = installSkill(figmaExtractor, tmpDir, false, false);
   assert.ok(fs.existsSync(path.join(tmpDir, 'figma-extractor', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(tmpDir, 'figma-extractor', 'scripts', 'fetch_figma.js')));
+  assert.ok(!fs.existsSync(path.join(tmpDir, 'figma-extractor', 'demo')), 'Should exclude demo/ folder');
+  assert.ok(!fs.existsSync(path.join(tmpDir, 'figma-extractor', 'scripts', 'test_fetch_figma.js')), 'Should exclude unit test files');
+  assert.ok(!fs.existsSync(path.join(tmpDir, 'figma-extractor', 'figma-plugin', 'assets')), 'Should exclude heavy plugin marketing assets');
   assert.strictEqual(res.isSymlink, false);
-  console.log('  ✓ installSkill: copies skill directory for standard agents');
+  console.log('  ✓ installSkill: copies lean skill directory without demo, tests, or marketing assets');
 
   // 4. installSkill - Cursor .mdc rule creation (no duplicate frontmatter) + default workspace scope
   const cursorProjectDir = path.join(tmpDir, 'cursor-project');
