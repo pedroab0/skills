@@ -551,13 +551,234 @@ function normalizeComponentProps(componentProperties) {
 // AST Pruning & Token Optimization
 // -----------------------------------------------------------------------------
 
-function pruneFigmaNode(node, context = {}, options = {}) {
+const VECTOR_PRIMITIVE_TYPES = new Set([
+  'VECTOR',
+  'BOOLEAN_OPERATION',
+  'STAR',
+  'LINE',
+  'REGULAR_POLYGON',
+  'POLYGON',
+]);
+
+function cleanLayerName(rawName, fallback = 'Node') {
+  if (!rawName || typeof rawName !== 'string') return fallback;
+  const trimmed = rawName.trim();
+  if (!trimmed) return fallback;
+  if (/^data:image\//i.test(trimmed)) return 'Image';
+  if (/^(?:<svg\b|<\?xml\b)/i.test(trimmed)) return 'SVG';
+  if (/^https?:\/\//i.test(trimmed) && trimmed.length > 60) {
+    try {
+      const lastSeg = trimmed.split('?')[0].split('/').pop();
+      return lastSeg && lastSeg.length <= 60 ? lastSeg : 'Image';
+    } catch (_) {
+      return 'Image';
+    }
+  }
+  const singleLine = trimmed.replace(/\s+/g, ' ');
+  return singleLine.length > 80 ? singleLine.slice(0, 80) + '…' : singleLine;
+}
+
+function isRawAssetString(str) {
+  if (!str || typeof str !== 'string') return false;
+  const t = str.trim();
+  return /^data:image\//i.test(t) || /^(?:<svg\b|<\?xml\b)/i.test(t);
+}
+
+function nodeHasImageFill(node) {
+  return Array.isArray(node.fills) && node.fills.some((f) => f && f.visible !== false && f.type === 'IMAGE');
+}
+
+const GRAPHIC_NAME_RE =
+  /svg|icon|ícone|icone|logo|marca|brand|illustrat|ilustra|vector|vetor|symbol|simbol|símbolo|glyph|graphic|ornament|pattern|artwork/i;
+
+function hasSvgExportSetting(node) {
+  if (!Array.isArray(node.exportSettings) || node.exportSettings.length === 0) return false;
+  return node.exportSettings.some((s) => s && String(s.format || '').toUpperCase() === 'SVG');
+}
+
+function subtreeHasNoInstances(node, maxNodes = 400) {
+  let visited = 0;
+  function walk(curr, isRoot) {
+    if (!curr || typeof curr !== 'object' || ++visited > maxNodes) return false;
+    const t = curr.type || '';
+    if (!isRoot && (t === 'INSTANCE' || t === 'COMPONENT' || t === 'COMPONENT_SET')) return false;
+    const kids = Array.isArray(curr.children) ? curr.children.filter((c) => c && c.visible !== false) : [];
+    for (const k of kids) {
+      if (!walk(k, false)) return false;
+    }
+    return true;
+  }
+  return walk(node, true);
+}
+
+function analyzeVectorSubtree(node, varMap, maxNodes = 600) {
+  let visited = 0;
+  let vectorPrimitiveCount = 0;
+  let shapeCount = 0;
+  let plainRectCount = 0;
+  let primaryFill = null;
+
+  const rootType = node.type || '';
+  const hasSvgExport = hasSvgExportSetting(node);
+
+  // Preserve Auto-Layout wrapper frames with their own styling (e.g., Icon Badge) unless explicitly exported as SVG
+  if (rootType === 'FRAME' && !hasSvgExport && node.layoutMode && node.layoutMode !== 'NONE') {
+    const ownFills = simplifyFills(node.fills, node.boundVariables || {}, varMap);
+    const ownStrokes = simplifyStrokes(node.strokes, node.strokeWeight, node.strokeAlign, node.boundVariables || {}, varMap);
+    if (ownFills || ownStrokes || node.cornerRadius) {
+      return { isPure: false, primaryFill: null };
+    }
+  }
+
+  function check(curr, isRoot) {
+    if (!curr || typeof curr !== 'object' || ++visited > maxNodes) return false;
+    const t = curr.type || '';
+    if (t === 'TEXT' || t === 'SLICE' || t === 'STICKY' || t === 'TABLE') return false;
+    if (!isRoot && (t === 'INSTANCE' || t === 'COMPONENT' || t === 'COMPONENT_SET')) return false;
+    if (nodeHasImageFill(curr)) return false;
+
+    if (!primaryFill) {
+      const fills = simplifyFills(curr.fills, curr.boundVariables || {}, varMap);
+      const solidFill = fills && fills.find((f) => f.type === 'SOLID' && f.color);
+      if (solidFill) {
+        primaryFill = solidFill;
+      } else {
+        const strokes = simplifyStrokes(curr.strokes, curr.strokeWeight, curr.strokeAlign, curr.boundVariables || {}, varMap);
+        if (strokes && strokes.colors && strokes.colors[0]) {
+          const c0 = strokes.colors[0];
+          primaryFill = typeof c0 === 'object' ? { type: 'SOLID', ...c0 } : { type: 'SOLID', color: c0 };
+        }
+      }
+    }
+
+    if (VECTOR_PRIMITIVE_TYPES.has(t)) {
+      vectorPrimitiveCount++;
+      return true;
+    }
+
+    if (t === 'ELLIPSE') {
+      shapeCount++;
+      return true;
+    }
+
+    if (t === 'RECTANGLE') {
+      if (curr.isMask === true || /clip|mask|vector|path|rect|bound|bg/i.test(String(curr.name || ''))) {
+        shapeCount++;
+      } else {
+        plainRectCount++;
+      }
+      return true;
+    }
+
+    if (t === 'GROUP' || t === 'FRAME' || (isRoot && (t === 'INSTANCE' || t === 'COMPONENT'))) {
+      if (!isRoot && t === 'FRAME' && curr.layoutMode && curr.layoutMode !== 'NONE') {
+        return false;
+      }
+      const kids = Array.isArray(curr.children) ? curr.children.filter((c) => c && c.visible !== false) : [];
+      if (kids.length === 0) return !isRoot;
+      for (const k of kids) {
+        if (!check(k, false)) return false;
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  const treeOk = check(node, true);
+  const w = node.absoluteBoundingBox ? node.absoluteBoundingBox.width : 9999;
+  const h = node.absoluteBoundingBox ? node.absoluteBoundingBox.height : 9999;
+
+  if (!treeOk) {
+    if (hasSvgExport && w <= 800 && h <= 800 && !nodeHasImageFill(node) && subtreeHasNoInstances(node)) {
+      return { isPure: true, primaryFill };
+    }
+    return { isPure: false, primaryFill: null };
+  }
+
+  const isSmallGraphic = w <= 160 && h <= 160;
+  const hasGraphicName = GRAPHIC_NAME_RE.test(String(node.name || ''));
+
+  const hasEnoughPrimitives =
+    vectorPrimitiveCount > 0 ||
+    (shapeCount + plainRectCount >= 2 && (hasSvgExport || (isSmallGraphic && hasGraphicName)));
+
+  const rectGuardOk =
+    plainRectCount === 0 ||
+    vectorPrimitiveCount >= 2 ||
+    isSmallGraphic ||
+    hasGraphicName ||
+    hasSvgExport;
+
+  const isPure = hasEnoughPrimitives && rectGuardOk;
+  return { isPure, primaryFill };
+}
+
+function analyzeMaskedImageSubtree(node) {
+  const t = node.type || '';
+  if (t !== 'GROUP' && t !== 'FRAME') return null;
+  if (node.layoutMode && node.layoutMode !== 'NONE') return null;
+
+  const kids = Array.isArray(node.children) ? node.children.filter((c) => c && c.visible !== false) : [];
+  if (kids.length === 0 || kids.length > 20) return null;
+
+  let foundImageFill = false;
+  let hasMaskOrClip = false;
+
+  function scan(curr) {
+    const ct = curr.type || '';
+    if (ct === 'TEXT' || ct === 'INSTANCE' || ct === 'COMPONENT') return false;
+    if (curr.isMask === true) hasMaskOrClip = true;
+    if (nodeHasImageFill(curr)) foundImageFill = true;
+
+    const sub = Array.isArray(curr.children) ? curr.children.filter((c) => c && c.visible !== false) : [];
+    for (const s of sub) {
+      if (!scan(s)) return false;
+    }
+    return true;
+  }
+
+  if (!scan(node) || !foundImageFill) return null;
+  if (!hasMaskOrClip && !/mask|image|img|photo|avatar|banner|thumb/i.test(String(node.name || ''))) {
+    return null;
+  }
+  return true;
+}
+
+function pruneFigmaNode(node, context = {}, options = {}, _depth = 0) {
   if (!node || typeof node !== 'object') return node;
 
   const { varMap, components, componentSets } = context;
+  const cleanName = cleanLayerName(node.name, 'Node');
+  const bound = node.boundVariables || {};
+  const bounds = node.absoluteBoundingBox
+    ? {
+        width: Math.round(node.absoluteBoundingBox.width),
+        height: Math.round(node.absoluteBoundingBox.height),
+      }
+    : undefined;
+
+  // 1. Leaf Vector Primitives (VECTOR, BOOLEAN_OPERATION, STAR, LINE, POLYGON)
+  if (VECTOR_PRIMITIVE_TYPES.has(node.type)) {
+    const vecNode = { name: cleanName, type: 'VECTOR' };
+    if (options.includeIds && node.id) vecNode.id = node.id;
+    if (node.visible === false) vecNode.visible = false;
+    if (bounds) vecNode.bounds = bounds;
+    const fills = simplifyFills(node.fills, bound, varMap);
+    if (fills) {
+      vecNode.fills = fills;
+    } else {
+      const strokes = simplifyStrokes(node.strokes, node.strokeWeight, node.strokeAlign, bound, varMap);
+      if (strokes && strokes.colors && strokes.colors[0]) {
+        const c0 = strokes.colors[0];
+        vecNode.fills = [typeof c0 === 'object' ? { type: 'SOLID', ...c0 } : { type: 'SOLID', color: c0 }];
+      }
+    }
+    return vecNode;
+  }
 
   const pruned = {
-    name: node.name,
+    name: cleanName,
     type: node.type,
   };
 
@@ -567,16 +788,14 @@ function pruneFigmaNode(node, context = {}, options = {}) {
 
   if (node.visible === false) pruned.visible = false;
 
-  const bound = node.boundVariables || {};
-
   // Component Instance & Master Resolution
   if (node.type === 'INSTANCE') {
     if (node.componentId && components && components[node.componentId]) {
       const master = components[node.componentId];
       const set = master.componentSetId && componentSets ? componentSets[master.componentSetId] : null;
       pruned.component = {
-        name: set ? set.name : master.name,
-        variant: master.name,
+        name: cleanLayerName(set ? set.name : master.name, cleanName),
+        variant: cleanLayerName(master.name, cleanName),
       };
       if (options.includeIds) {
         pruned.component.id = node.componentId;
@@ -588,12 +807,7 @@ function pruneFigmaNode(node, context = {}, options = {}) {
 
     // Shallow instances: skip internal rendering sub-layers if requested
     if (options.shallowInstances) {
-      if (node.absoluteBoundingBox) {
-        pruned.bounds = {
-          width: Math.round(node.absoluteBoundingBox.width),
-          height: Math.round(node.absoluteBoundingBox.height),
-        };
-      }
+      if (bounds) pruned.bounds = bounds;
       return pruned;
     }
   } else if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
@@ -601,11 +815,42 @@ function pruneFigmaNode(node, context = {}, options = {}) {
     if (props) pruned.props = props;
   }
 
+  // 2. Collapse Pure SVG / Icon / Vector Graphic Containers
+  if (_depth > 0 || node.type === 'GROUP' || node.type === 'INSTANCE') {
+    const vecCheck = analyzeVectorSubtree(node, varMap);
+    if (vecCheck.isPure) {
+      if (node.type !== 'INSTANCE' && node.type !== 'COMPONENT') {
+        pruned.type = 'VECTOR';
+        pruned.isSvg = true;
+      }
+      if (bounds) pruned.bounds = bounds;
+      const ownFills = simplifyFills(node.fills, bound, varMap);
+      if (ownFills) {
+        pruned.fills = ownFills;
+      } else if (vecCheck.primaryFill) {
+        pruned.fills = [vecCheck.primaryFill];
+      }
+      return pruned;
+    }
+  }
+
+  // 3. Collapse Masked Image Groups
+  if (_depth > 0 && analyzeMaskedImageSubtree(node)) {
+    if (bounds) pruned.bounds = bounds;
+    pruned.fills = [{ type: 'IMAGE' }];
+    if (node.cornerRadius) pruned.cornerRadius = node.cornerRadius;
+    return pruned;
+  }
+
   // Layout & Flexbox properties
   if (node.layoutMode && node.layoutMode !== 'NONE') {
     pruned.layoutMode = node.layoutMode;
-    if (node.primaryAxisAlignItems) pruned.primaryAxisAlignItems = node.primaryAxisAlignItems;
-    if (node.counterAxisAlignItems) pruned.counterAxisAlignItems = node.counterAxisAlignItems;
+    if (node.primaryAxisAlignItems && node.primaryAxisAlignItems !== 'MIN') {
+      pruned.primaryAxisAlignItems = node.primaryAxisAlignItems;
+    }
+    if (node.counterAxisAlignItems && node.counterAxisAlignItems !== 'MIN') {
+      pruned.counterAxisAlignItems = node.counterAxisAlignItems;
+    }
 
     if (node.itemSpacing) {
       pruned.itemSpacing = node.itemSpacing;
@@ -626,18 +871,15 @@ function pruneFigmaNode(node, context = {}, options = {}) {
       if (padToken) pruned.paddingToken = padToken;
     }
 
-    if (node.layoutWrap) pruned.layoutWrap = node.layoutWrap;
+    if (node.layoutWrap && node.layoutWrap !== 'NO_WRAP') pruned.layoutWrap = node.layoutWrap;
   }
 
   if (node.layoutGrow) pruned.layoutGrow = node.layoutGrow;
-  if (node.layoutAlign) pruned.layoutAlign = node.layoutAlign;
+  if (node.layoutAlign && node.layoutAlign !== 'INHERIT') pruned.layoutAlign = node.layoutAlign;
 
   // Dimensions & Coordinates
-  if (node.absoluteBoundingBox) {
-    pruned.bounds = {
-      width: Math.round(node.absoluteBoundingBox.width),
-      height: Math.round(node.absoluteBoundingBox.height),
-    };
+  if (bounds) {
+    pruned.bounds = bounds;
   }
 
   if (node.minWidth) pruned.minWidth = node.minWidth;
@@ -656,8 +898,9 @@ function pruneFigmaNode(node, context = {}, options = {}) {
     pruned.cornerRadius = node.cornerRadius;
     const radiusToken = resolveVariableToken(bound.cornerRadius, varMap);
     if (radiusToken) pruned.cornerRadiusToken = radiusToken;
+  } else if (Array.isArray(node.rectangleCornerRadii) && node.rectangleCornerRadii.some((r) => r > 0)) {
+    pruned.cornerRadii = node.rectangleCornerRadii;
   }
-  if (node.rectangleCornerRadii) pruned.cornerRadii = node.rectangleCornerRadii;
   if (node.opacity !== undefined && node.opacity !== 1) pruned.opacity = node.opacity;
 
   // Effects (Drop Shadows, Layer Blurs)
@@ -675,25 +918,32 @@ function pruneFigmaNode(node, context = {}, options = {}) {
 
   // Typography (for TEXT nodes)
   if (node.type === 'TEXT') {
-    pruned.characters = node.characters;
+    pruned.characters = isRawAssetString(node.characters) ? '[raw-asset-omitted]' : node.characters;
     if (node.style) {
-      pruned.typography = {
-        fontFamily: node.style.fontFamily,
-        fontSize: node.style.fontSize,
-        fontWeight: node.style.fontWeight,
-        lineHeightPx: node.style.lineHeightPx ? Math.round(node.style.lineHeightPx) : undefined,
-        letterSpacing: node.style.letterSpacing,
-        textAlignHorizontal: node.style.textAlignHorizontal,
-        textAlignVertical: node.style.textAlignVertical,
-      };
+      const typo = {};
+      if (node.style.fontFamily) typo.fontFamily = node.style.fontFamily;
+      if (node.style.fontSize) typo.fontSize = node.style.fontSize;
+      if (node.style.fontWeight) typo.fontWeight = node.style.fontWeight;
+      if (node.style.lineHeightPx) typo.lineHeightPx = Math.round(node.style.lineHeightPx);
+      if (node.style.letterSpacing) typo.letterSpacing = node.style.letterSpacing;
+      if (node.style.textAlignHorizontal && node.style.textAlignHorizontal !== 'LEFT') {
+        typo.textAlignHorizontal = node.style.textAlignHorizontal;
+      }
+      if (node.style.textAlignVertical && node.style.textAlignVertical !== 'TOP') {
+        typo.textAlignVertical = node.style.textAlignVertical;
+      }
+      if (Object.keys(typo).length > 0) {
+        pruned.typography = typo;
+      }
     }
   }
 
   // Recursively process children
   if (Array.isArray(node.children) && node.children.length > 0) {
-    pruned.children = node.children
-      .filter((c) => c.visible !== false)
-      .map((c) => pruneFigmaNode(c, context, options));
+    const visibleChildren = node.children.filter((c) => c && c.visible !== false);
+    if (visibleChildren.length > 0) {
+      pruned.children = visibleChildren.map((c) => pruneFigmaNode(c, context, options, _depth + 1));
+    }
   }
 
   return pruned;

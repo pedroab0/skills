@@ -28,13 +28,29 @@ const {
 
 let passedTests = 0;
 let totalTests = 0;
+const pendingTests = [];
 
 function test(name, fn) {
   totalTests++;
   try {
-    fn();
-    console.log(`  ✓ ${name}`);
-    passedTests++;
+    const res = fn();
+    if (res && typeof res.then === 'function') {
+      pendingTests.push(
+        res.then(
+          () => {
+            console.log(`  ✓ ${name}`);
+            passedTests++;
+          },
+          (err) => {
+            console.error(`  ✗ ${name}`);
+            console.error(`    ${err.message}`);
+          }
+        )
+      );
+    } else {
+      console.log(`  ✓ ${name}`);
+      passedTests++;
+    }
   } catch (err) {
     console.error(`  ✗ ${name}`);
     console.error(`    ${err.message}`);
@@ -679,9 +695,258 @@ test('checkAndApplyRateGate: records request timestamps into sliding window', as
   resetRateGateState(testKey);
 });
 
-console.log(`\nResults: ${passedTests}/${totalTests} tests passed.`);
+test('pruneFigmaNode: collapses pure SVG/vector subtrees, icon instances, and masked image groups', () => {
+  const mockScreen = {
+    name: 'Hero Section',
+    type: 'FRAME',
+    layoutMode: 'HORIZONTAL',
+    layoutWrap: 'NO_WRAP',
+    primaryAxisAlignItems: 'MIN',
+    counterAxisAlignItems: 'CENTER',
+    rectangleCornerRadii: [0, 0, 0, 0],
+    absoluteBoundingBox: { width: 1200, height: 600 },
+    children: [
+      // 1. Complex imported SVG illustration with vectors + rectangles + clip masks
+      {
+        name: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><path d="M0 0"/></svg>',
+        type: 'FRAME',
+        layoutMode: 'NONE',
+        absoluteBoundingBox: { width: 400, height: 300 },
+        children: [
+          { name: 'Clip path', type: 'RECTANGLE', isMask: true, fills: [] },
+          { name: 'Rectangle 12', type: 'RECTANGLE', fills: [{ type: 'SOLID', color: { r: 0, g: 0.7, b: 0.5 } }] },
+          {
+            name: 'Group',
+            type: 'GROUP',
+            children: [
+              { name: 'Vector 1', type: 'VECTOR', fills: [{ type: 'SOLID', color: { r: 0, g: 0.7, b: 0.5 } }] },
+              { name: 'Vector 2', type: 'VECTOR', fills: [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }] },
+              { name: 'Boolean', type: 'BOOLEAN_OPERATION', children: [{ name: 'Sub', type: 'VECTOR' }] },
+            ],
+          },
+        ],
+      },
+      // 2. Icon INSTANCE with internal stroke vectors
+      {
+        name: 'Icons',
+        type: 'INSTANCE',
+        componentId: 'comp_icon_1',
+        componentProperties: { 'Tipo#12:3': { value: 'arrow-up' } },
+        layoutAlign: 'INHERIT',
+        absoluteBoundingBox: { width: 24, height: 24 },
+        children: [
+          { name: 'Vector (Stroke)', type: 'VECTOR', strokes: [{ type: 'SOLID', color: { r: 0, g: 1, b: 0.5 } }], strokeWeight: 2 },
+          { name: 'Vector (Stroke)', type: 'VECTOR', strokes: [{ type: 'SOLID', color: { r: 0, g: 1, b: 0.5 } }], strokeWeight: 2 },
+        ],
+      },
+      // 3. Masked Photo Group (zero text/components) -> collapses to single image container
+      {
+        name: 'Mask group',
+        type: 'GROUP',
+        absoluteBoundingBox: { width: 280, height: 200 },
+        children: [
+          { name: 'Mask', type: 'RECTANGLE', isMask: true, fills: [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }] },
+          { name: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA', type: 'RECTANGLE', fills: [{ type: 'IMAGE' }] },
+        ],
+      },
+      // 4. Hero Banner with IMAGE background AND real UI TEXT -> MUST keep text children!
+      {
+        name: 'Promo Banner',
+        type: 'FRAME',
+        fills: [{ type: 'IMAGE' }],
+        absoluteBoundingBox: { width: 320, height: 180 },
+        children: [
+          {
+            name: 'Headline',
+            type: 'TEXT',
+            characters: '50% OFF',
+            style: { fontFamily: 'Inter', fontSize: 24, fontWeight: 700, letterSpacing: 0, textAlignHorizontal: 'LEFT', textAlignVertical: 'TOP' },
+          },
+        ],
+      },
+    ],
+  };
 
-if (passedTests !== totalTests) {
-  process.exit(1);
-}
+  const context = {
+    varMap: {},
+    components: { comp_icon_1: { name: 'Tipo=arrow-up', componentSetId: 'set_icons' } },
+    componentSets: { set_icons: { name: 'Icons' } },
+  };
+
+  const pruned = pruneFigmaNode(mockScreen, context);
+
+  // Default layout noise omitted
+  assert.strictEqual(pruned.layoutWrap, undefined);
+  assert.strictEqual(pruned.primaryAxisAlignItems, undefined);
+  assert.strictEqual(pruned.counterAxisAlignItems, 'CENTER');
+  assert.strictEqual(pruned.cornerRadii, undefined);
+
+  // 1. SVG illustration collapsed into 1 leaf VECTOR node with sanitized name
+  const svgNode = pruned.children[0];
+  assert.strictEqual(svgNode.name, 'SVG');
+  assert.strictEqual(svgNode.type, 'VECTOR');
+  assert.strictEqual(svgNode.isSvg, true);
+  assert.strictEqual(svgNode.children, undefined);
+  assert.deepStrictEqual(svgNode.bounds, { width: 400, height: 300 });
+
+  // 2. Icon instance keeps INSTANCE + component + props + inherited stroke color, drops Vector children
+  const iconNode = pruned.children[1];
+  assert.strictEqual(iconNode.type, 'INSTANCE');
+  assert.deepStrictEqual(iconNode.component, { name: 'Icons', variant: 'Tipo=arrow-up' });
+  assert.deepStrictEqual(iconNode.props, { tipo: 'arrow-up' });
+  assert.strictEqual(iconNode.children, undefined);
+  assert.strictEqual(iconNode.fills[0].color, '#00FF80');
+
+  // 3. Masked image group collapsed
+  const imgGroup = pruned.children[2];
+  assert.strictEqual(imgGroup.children, undefined);
+  assert.deepStrictEqual(imgGroup.fills, [{ type: 'IMAGE' }]);
+
+  // 4. Promo banner with IMAGE fill + TEXT preserves its TEXT child
+  const banner = pruned.children[3];
+  assert.strictEqual(banner.children.length, 1);
+  assert.strictEqual(banner.children[0].characters, '50% OFF');
+  assert.strictEqual(banner.children[0].typography.letterSpacing, undefined);
+  assert.strictEqual(banner.children[0].typography.textAlignHorizontal, undefined);
+});
+
+test('figma-plugin code.js: serializeNode prunes SVGs, zeroed cornerRadii/padding, and resolves getMainComponentAsync', async () => {
+  const vm = require('vm');
+  const pluginCode = fs.readFileSync(path.join(__dirname, '..', 'figma-plugin', 'code.js'), 'utf8');
+  let postedMsg = null;
+
+  const mockSelectionNode = {
+    name: 'Card Screen',
+    type: 'FRAME',
+    width: 800,
+    height: 400,
+    layoutMode: 'VERTICAL',
+    primaryAxisAlignItems: 'MIN',
+    counterAxisAlignItems: 'MIN',
+    layoutWrap: 'NO_WRAP',
+    paddingTop: 0,
+    paddingRight: 0,
+    paddingBottom: 0,
+    paddingLeft: 0,
+    cornerRadius: 0,
+    topLeftRadius: 0,
+    topRightRadius: 0,
+    bottomRightRadius: 0,
+    bottomLeftRadius: 0,
+    exportAsync: async () => new Uint8Array([137, 80, 78, 71]),
+    children: [
+      {
+        name: 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=',
+        type: 'GROUP',
+        width: 48,
+        height: 48,
+        children: [
+          { name: 'Vector 1', type: 'VECTOR', width: 48, height: 48, fills: [{ type: 'SOLID', color: { r: 0, g: 0.5, b: 1 } }] },
+          { name: 'Rect 1', type: 'RECTANGLE', width: 20, height: 20, fills: [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }] },
+        ],
+      },
+      {
+        name: 'Action Icon',
+        type: 'INSTANCE',
+        width: 24,
+        height: 24,
+        topLeftRadius: 0,
+        topRightRadius: 0,
+        bottomRightRadius: 0,
+        bottomLeftRadius: 0,
+        componentProperties: { 'Variant#1:2': { value: 'Check' } },
+        getMainComponentAsync: async () => ({
+          name: 'Variant=Check',
+          parent: { type: 'COMPONENT_SET', name: 'Icon' },
+        }),
+        children: [
+          { name: 'Path', type: 'VECTOR', width: 16, height: 12, strokes: [{ type: 'SOLID', color: { r: 0, g: 0.8, b: 0.4 } }], strokeWeight: 2 },
+        ],
+      },
+      {
+        name: 'DT Money',
+        type: 'TEXT',
+        width: 116,
+        height: 41,
+        characters: 'DT Money',
+        fills: Symbol('figma.mixed'),
+        fontName: Symbol('figma.mixed'),
+        fontSize: 16,
+        fontWeight: Symbol('figma.mixed'),
+        lineHeight: { unit: 'PERCENT', value: 160 },
+        letterSpacing: { unit: 'PERCENT', value: 0 },
+        textAlignHorizontal: 'LEFT',
+        textAlignVertical: 'TOP',
+        getRangeFills: () => [{ type: 'SOLID', color: { r: 0.88, g: 0.88, b: 0.9 } }],
+        getRangeFontName: () => ({ family: 'Roboto', style: 'Bold' }),
+        getRangeFontWeight: () => 700,
+      },
+    ],
+  };
+
+  const sandbox = {
+    __html__: '',
+    console,
+    Uint8Array,
+    Math,
+    Number,
+    Object,
+    Array,
+    Set,
+    String,
+    figma: {
+      showUI: () => {},
+      on: () => {},
+      notify: () => {},
+      currentPage: { selection: [mockSelectionNode] },
+      ui: {
+        postMessage: (msg) => {
+          postedMsg = msg;
+        },
+        onmessage: null,
+      },
+    },
+  };
+
+  vm.runInNewContext(pluginCode, sandbox);
+  // Wait microtasks for async exportCurrentSelection()
+  await new Promise((r) => setTimeout(r, 20));
+
+  assert.ok(postedMsg && postedMsg.type === 'SPEC_EXPORTED', 'Plugin should post SPEC_EXPORTED');
+  const spec = JSON.parse(JSON.stringify(postedMsg.spec));
+  assert.strictEqual(spec.padding, undefined, 'Zero padding must be omitted');
+  assert.strictEqual(spec.cornerRadii, undefined, '[0,0,0,0] cornerRadii must be omitted');
+  assert.strictEqual(spec.layoutWrap, undefined, 'Default NO_WRAP must be omitted');
+
+  // Group SVG collapsed & base64 layer name cleaned
+  assert.strictEqual(spec.children[0].name, 'Image');
+  assert.strictEqual(spec.children[0].type, 'VECTOR');
+  assert.strictEqual(spec.children[0].isSvg, true);
+  assert.strictEqual(spec.children[0].children, undefined);
+
+  // Instance resolved via getMainComponentAsync & vector child collapsed
+  assert.strictEqual(spec.children[1].type, 'INSTANCE');
+  assert.deepStrictEqual(spec.children[1].component, { name: 'Icon', variant: 'Variant=Check' });
+  assert.deepStrictEqual(spec.children[1].props, { variant: 'Check' });
+  assert.strictEqual(spec.children[1].children, undefined);
+
+  // Mixed-style TEXT resolves getRange* fallbacks, numeric fontWeight, and PERCENT lineHeightPx
+  const mixedText = spec.children[2];
+  assert.strictEqual(mixedText.type, 'TEXT');
+  assert.strictEqual(mixedText.fills[0].color, '#E0E0E6');
+  assert.deepStrictEqual(mixedText.typography, {
+    fontFamily: 'Roboto',
+    fontStyle: 'Bold',
+    fontWeight: 700,
+    fontSize: 16,
+    lineHeightPx: 26,
+  });
+});
+
+Promise.all(pendingTests).then(() => {
+  console.log(`\nResults: ${passedTests}/${totalTests} tests passed.`);
+  if (passedTests !== totalTests) {
+    process.exit(1);
+  }
+});
 

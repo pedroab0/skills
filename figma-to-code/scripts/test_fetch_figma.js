@@ -28,13 +28,29 @@ const {
 
 let passedTests = 0;
 let totalTests = 0;
+const pendingTests = [];
 
 function test(name, fn) {
   totalTests++;
   try {
-    fn();
-    console.log(`  ✓ ${name}`);
-    passedTests++;
+    const res = fn();
+    if (res && typeof res.then === 'function') {
+      pendingTests.push(
+        res.then(
+          () => {
+            console.log(`  ✓ ${name}`);
+            passedTests++;
+          },
+          (err) => {
+            console.error(`  ✗ ${name}`);
+            console.error(`    ${err.message}`);
+          }
+        )
+      );
+    } else {
+      console.log(`  ✓ ${name}`);
+      passedTests++;
+    }
   } catch (err) {
     console.error(`  ✗ ${name}`);
     console.error(`    ${err.message}`);
@@ -652,9 +668,55 @@ test('checkAndApplyRateGate: records request timestamps into sliding window', as
   resetRateGateState(testKey);
 });
 
-console.log(`\nResults: ${passedTests}/${totalTests} tests passed.`);
+test('pruneFigmaNode: collapses pure SVG/vector subtrees, icon instances, and masked image groups', () => {
+  const mockScreen = {
+    name: 'Hero Section',
+    type: 'FRAME',
+    layoutMode: 'HORIZONTAL',
+    layoutWrap: 'NO_WRAP',
+    primaryAxisAlignItems: 'MIN',
+    counterAxisAlignItems: 'CENTER',
+    rectangleCornerRadii: [0, 0, 0, 0],
+    absoluteBoundingBox: { width: 1200, height: 600 },
+    children: [
+      {
+        name: '<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0"/></svg>',
+        type: 'FRAME',
+        layoutMode: 'NONE',
+        absoluteBoundingBox: { width: 400, height: 300 },
+        children: [
+          { name: 'Rectangle 12', type: 'RECTANGLE', fills: [{ type: 'SOLID', color: { r: 0, g: 0.7, b: 0.5 } }] },
+          { name: 'Vector 1', type: 'VECTOR', fills: [{ type: 'SOLID', color: { r: 0, g: 0.7, b: 0.5 } }] },
+          { name: 'Vector 2', type: 'VECTOR', fills: [{ type: 'SOLID', color: { r: 1, g: 1, b: 1 } }] },
+        ],
+      },
+      {
+        name: 'Mask group',
+        type: 'GROUP',
+        absoluteBoundingBox: { width: 280, height: 200 },
+        children: [
+          { name: 'Mask', type: 'RECTANGLE', isMask: true, fills: [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }] },
+          { name: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA', type: 'RECTANGLE', fills: [{ type: 'IMAGE' }] },
+        ],
+      },
+    ],
+  };
 
-if (passedTests !== totalTests) {
-  process.exit(1);
-}
+  const pruned = pruneFigmaNode(mockScreen, { varMap: {}, components: {}, componentSets: {} });
+  assert.strictEqual(pruned.layoutWrap, undefined);
+  assert.strictEqual(pruned.cornerRadii, undefined);
+  assert.strictEqual(pruned.children[0].name, 'SVG');
+  assert.strictEqual(pruned.children[0].type, 'VECTOR');
+  assert.strictEqual(pruned.children[0].isSvg, true);
+  assert.strictEqual(pruned.children[0].children, undefined);
+  assert.strictEqual(pruned.children[1].children, undefined);
+  assert.deepStrictEqual(pruned.children[1].fills, [{ type: 'IMAGE' }]);
+});
+
+Promise.all(pendingTests).then(() => {
+  console.log(`\nResults: ${passedTests}/${totalTests} tests passed.`);
+  if (passedTests !== totalTests) {
+    process.exit(1);
+  }
+});
 
