@@ -111,35 +111,353 @@ function safeGet(obj, prop, fallback = undefined) {
   }
 }
 
-function serializeNode(node, depth = 0) {
+// Safely resolve TextNode properties with automatic fallback to character range (0, 1) when figma.mixed
+function safeGetTextProp(node, prop, rangeMethod, hasChars) {
+  const direct = safeGet(node, prop);
+  if (direct !== undefined) return direct;
+  if (hasChars && rangeMethod && typeof node[rangeMethod] === 'function') {
+    try {
+      const ranged = node[rangeMethod](0, 1);
+      if (typeof ranged !== 'symbol' && ranged !== undefined) {
+        return ranged;
+      }
+    } catch (_) {}
+  }
+  return undefined;
+}
+
+function resolveFontWeight(explicitWeight, fontStyle) {
+  if (typeof explicitWeight === 'number' && explicitWeight > 0) {
+    return explicitWeight;
+  }
+  if (!fontStyle || typeof fontStyle !== 'string') return undefined;
+  const s = fontStyle.toLowerCase();
+  if (/thin|hairline/.test(s)) return 100;
+  if (/extra\s*light|ultra\s*light/.test(s)) return 200;
+  if (/light/.test(s)) return 300;
+  if (/semi\s*bold|demi\s*bold/.test(s)) return 600;
+  if (/extra\s*bold|ultra\s*bold/.test(s)) return 800;
+  if (/bold/.test(s)) return 700;
+  if (/black|heavy/.test(s)) return 900;
+  if (/medium/.test(s)) return 500;
+  if (/regular|normal|book|roman/.test(s)) return 400;
+  return undefined;
+}
+
+const VECTOR_PRIMITIVE_TYPES = new Set([
+  'VECTOR',
+  'BOOLEAN_OPERATION',
+  'STAR',
+  'LINE',
+  'REGULAR_POLYGON',
+  'POLYGON',
+]);
+
+function cleanLayerName(rawName, fallback = 'Node') {
+  if (!rawName || typeof rawName !== 'string') return fallback;
+  const trimmed = rawName.trim();
+  if (!trimmed) return fallback;
+  if (/^data:image\//i.test(trimmed)) return 'Image';
+  if (/^(?:<svg\b|<\?xml\b)/i.test(trimmed)) return 'SVG';
+  if (/^https?:\/\//i.test(trimmed) && trimmed.length > 60) {
+    try {
+      const lastSeg = trimmed.split('?')[0].split('/').pop();
+      return (lastSeg && lastSeg.length <= 60) ? lastSeg : 'Image';
+    } catch (_) {
+      return 'Image';
+    }
+  }
+  const singleLine = trimmed.replace(/\s+/g, ' ');
+  return singleLine.length > 80 ? singleLine.slice(0, 80) + '…' : singleLine;
+}
+
+function isRawAssetString(str) {
+  if (!str || typeof str !== 'string') return false;
+  const t = str.trim();
+  return /^data:image\//i.test(t) || /^(?:<svg\b|<\?xml\b)/i.test(t);
+}
+
+function nodeHasImageFill(node) {
+  const fills = safeGet(node, 'fills');
+  if (!Array.isArray(fills)) return false;
+  return fills.some((f) => f && f.visible !== false && f.type === 'IMAGE');
+}
+
+function getVisibleChildren(node) {
+  const children = safeGet(node, 'children');
+  if (!Array.isArray(children) || children.length === 0) return [];
+  return children.filter((c) => {
+    try {
+      return c && safeGet(c, 'visible', true) !== false;
+    } catch (_) {
+      return false;
+    }
+  });
+}
+
+const GRAPHIC_NAME_RE =
+  /svg|icon|ícone|icone|logo|marca|brand|illustrat|ilustra|vector|vetor|symbol|simbol|símbolo|glyph|graphic|ornament|pattern|artwork/i;
+
+function hasSvgExportSetting(node) {
+  const settings = safeGet(node, 'exportSettings');
+  if (!Array.isArray(settings) || settings.length === 0) return false;
+  return settings.some((s) => s && String(safeGet(s, 'format', '')).toUpperCase() === 'SVG');
+}
+
+function subtreeHasNoInstances(node, maxNodes = 400) {
+  let visited = 0;
+  function walk(curr, isRoot) {
+    if (++visited > maxNodes) return false;
+    const t = safeGet(curr, 'type', '');
+    if (!isRoot && (t === 'INSTANCE' || t === 'COMPONENT' || t === 'COMPONENT_SET')) return false;
+    for (const k of getVisibleChildren(curr)) {
+      if (!walk(k, false)) return false;
+    }
+    return true;
+  }
+  return walk(node, true);
+}
+
+// Detects whether a container (GROUP, FRAME, INSTANCE, COMPONENT) is purely an SVG / icon / vector illustration
+function analyzeVectorSubtree(node, maxNodes = 600) {
+  let visited = 0;
+  let vectorPrimitiveCount = 0;
+  let shapeCount = 0;
+  let plainRectCount = 0;
+  let primarySolidColor = null;
+
+  const rootType = safeGet(node, 'type', '');
+  const hasSvgExport = hasSvgExportSetting(node);
+
+  // An Auto-Layout FRAME with its own styling (e.g., Icon Badge) should keep its wrapper unless marked as SVG export
+  if (rootType === 'FRAME' && !hasSvgExport) {
+    const rootLm = safeGet(node, 'layoutMode');
+    if (rootLm && rootLm !== 'NONE') {
+      const ownFills = simplifyFills(safeGet(node, 'fills'));
+      const ownStrokes = simplifyStrokes(safeGet(node, 'strokes'), safeGet(node, 'strokeWeight'), safeGet(node, 'strokeAlign'));
+      const ownCr = safeGet(node, 'cornerRadius');
+      if (ownFills || ownStrokes || (typeof ownCr === 'number' && ownCr > 0)) {
+        return { isPure: false, primarySolidColor: null };
+      }
+    }
+  }
+
+  function check(curr, isRoot) {
+    if (++visited > maxNodes) return false;
+    const t = safeGet(curr, 'type', '');
+    if (t === 'TEXT' || t === 'SLICE' || t === 'STICKY' || t === 'TABLE') return false;
+    if (!isRoot && (t === 'INSTANCE' || t === 'COMPONENT' || t === 'COMPONENT_SET')) return false;
+    if (nodeHasImageFill(curr)) return false;
+
+    if (!primarySolidColor) {
+      const fills = simplifyFills(safeGet(curr, 'fills'));
+      const solidFill = fills && fills.find((f) => f.type === 'SOLID' && f.color);
+      if (solidFill) {
+        primarySolidColor = solidFill.color;
+      } else {
+        const strokes = simplifyStrokes(safeGet(curr, 'strokes'), safeGet(curr, 'strokeWeight'), safeGet(curr, 'strokeAlign'));
+        if (strokes && strokes[0] && strokes[0].color) {
+          primarySolidColor = strokes[0].color;
+        }
+      }
+    }
+
+    if (VECTOR_PRIMITIVE_TYPES.has(t)) {
+      vectorPrimitiveCount++;
+      return true;
+    }
+
+    if (t === 'ELLIPSE') {
+      shapeCount++;
+      return true;
+    }
+
+    if (t === 'RECTANGLE') {
+      const isMask = safeGet(curr, 'isMask') === true;
+      const rName = String(safeGet(curr, 'name', ''));
+      if (isMask || /clip|mask|vector|path|rect|bound|bg/i.test(rName)) {
+        shapeCount++;
+      } else {
+        plainRectCount++;
+      }
+      return true;
+    }
+
+    if (t === 'GROUP' || t === 'FRAME' || (isRoot && (t === 'INSTANCE' || t === 'COMPONENT'))) {
+      if (!isRoot && t === 'FRAME') {
+        const lm = safeGet(curr, 'layoutMode');
+        if (lm && lm !== 'NONE') return false;
+      }
+      const kids = getVisibleChildren(curr);
+      if (kids.length === 0) return !isRoot;
+      for (const k of kids) {
+        if (!check(k, false)) return false;
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  const treeOk = check(node, true);
+  if (!treeOk) {
+    // Explicit SVG export setting on a self-contained graphic/logo (even if it contains logo <text>)
+    const w = safeGet(node, 'width', 0);
+    const h = safeGet(node, 'height', 0);
+    if (
+      hasSvgExport &&
+      typeof w === 'number' &&
+      typeof h === 'number' &&
+      w <= 800 &&
+      h <= 800 &&
+      !nodeHasImageFill(node) &&
+      subtreeHasNoInstances(node)
+    ) {
+      return { isPure: true, primarySolidColor };
+    }
+    return { isPure: false, primarySolidColor: null };
+  }
+
+  const w = safeGet(node, 'width', 9999);
+  const h = safeGet(node, 'height', 9999);
+  const isSmallGraphic = typeof w === 'number' && typeof h === 'number' && w <= 160 && h <= 160;
+  const nodeName = String(safeGet(node, 'name', ''));
+  const hasGraphicName = GRAPHIC_NAME_RE.test(nodeName);
+
+  const hasEnoughPrimitives =
+    vectorPrimitiveCount > 0 ||
+    (shapeCount + plainRectCount >= 2 && (hasSvgExport || (isSmallGraphic && hasGraphicName)));
+
+  const rectGuardOk =
+    plainRectCount === 0 ||
+    vectorPrimitiveCount >= 2 ||
+    isSmallGraphic ||
+    hasGraphicName ||
+    hasSvgExport;
+
+  const isPure = hasEnoughPrimitives && rectGuardOk;
+  return { isPure, primarySolidColor };
+}
+
+// Detects masked image groups (e.g., Mask group with photo + mask shape and zero UI text/components)
+function analyzeMaskedImageSubtree(node) {
+  const t = safeGet(node, 'type', '');
+  if (t !== 'GROUP' && t !== 'FRAME') return null;
+  const lm = safeGet(node, 'layoutMode');
+  if (lm && lm !== 'NONE') return null;
+
+  const kids = getVisibleChildren(node);
+  if (kids.length === 0 || kids.length > 20) return null;
+
+  let foundImageScaleMode = null;
+  let hasMaskOrClip = false;
+
+  function scan(curr) {
+    const ct = safeGet(curr, 'type', '');
+    if (ct === 'TEXT' || ct === 'INSTANCE' || ct === 'COMPONENT') return false;
+    if (safeGet(curr, 'isMask') === true) hasMaskOrClip = true;
+
+    const fills = safeGet(curr, 'fills');
+    if (Array.isArray(fills)) {
+      for (const f of fills) {
+        if (f && f.visible !== false && f.type === 'IMAGE') {
+          foundImageScaleMode = f.scaleMode || 'FILL';
+        }
+      }
+    }
+
+    const sub = getVisibleChildren(curr);
+    for (const s of sub) {
+      if (!scan(s)) return false;
+    }
+    return true;
+  }
+
+  if (!scan(node) || !foundImageScaleMode) return null;
+  if (!hasMaskOrClip && !/mask|image|img|photo|avatar|banner|thumb/i.test(String(safeGet(node, 'name', '')))) {
+    return null;
+  }
+  return { scaleMode: foundImageScaleMode };
+}
+
+function assignCleanCornerRadius(node, pruned) {
+  const cornerRadius = safeGet(node, 'cornerRadius');
+  if (typeof cornerRadius === 'number' && cornerRadius > 0) {
+    pruned.cornerRadius = Math.round(cornerRadius * 100) / 100;
+    return;
+  }
+  const tl = safeGet(node, 'topLeftRadius');
+  const tr = safeGet(node, 'topRightRadius');
+  const br = safeGet(node, 'bottomRightRadius');
+  const bl = safeGet(node, 'bottomLeftRadius');
+  const r0 = typeof tl === 'number' && tl > 0 ? Math.round(tl * 100) / 100 : 0;
+  const r1 = typeof tr === 'number' && tr > 0 ? Math.round(tr * 100) / 100 : 0;
+  const r2 = typeof br === 'number' && br > 0 ? Math.round(br * 100) / 100 : 0;
+  const r3 = typeof bl === 'number' && bl > 0 ? Math.round(bl * 100) / 100 : 0;
+  if (r0 > 0 || r1 > 0 || r2 > 0 || r3 > 0) {
+    if (r0 === r1 && r1 === r2 && r2 === r3) {
+      pruned.cornerRadius = r0;
+    } else {
+      pruned.cornerRadii = [r0, r1, r2, r3];
+    }
+  }
+}
+
+async function serializeNode(node, depth = 0) {
   if (!node) return null;
   if (depth > 25) {
-    return { name: safeGet(node, 'name', 'Node'), type: safeGet(node, 'type', 'FRAME') };
+    return { name: cleanLayerName(safeGet(node, 'name'), 'Node'), type: safeGet(node, 'type', 'FRAME') };
   }
 
   try {
     const nodeType = safeGet(node, 'type', 'FRAME');
-    const pruned = {
-      name: safeGet(node, 'name', 'Node'),
-      type: nodeType,
-    };
-
-    if (safeGet(node, 'visible') === false) pruned.visible = false;
+    const cleanName = cleanLayerName(safeGet(node, 'name'), 'Node');
 
     // Dimensions & Coordinates
     const width = safeGet(node, 'width');
     const height = safeGet(node, 'height');
-    if (typeof width === 'number' && typeof height === 'number') {
-      pruned.bounds = {
-        width: Math.round(width),
-        height: Math.round(height),
-      };
+    const bounds =
+      typeof width === 'number' && typeof height === 'number'
+        ? { width: Math.round(width), height: Math.round(height) }
+        : undefined;
+
+    // 1. Leaf Vector Primitives (VECTOR, BOOLEAN_OPERATION, STAR, LINE, POLYGON) — never dump sub-paths
+    if (VECTOR_PRIMITIVE_TYPES.has(nodeType)) {
+      const vecNode = { name: cleanName, type: 'VECTOR' };
+      if (bounds) vecNode.bounds = bounds;
+      const fills = simplifyFills(safeGet(node, 'fills'));
+      const solidFill = fills && fills.find((f) => f.type === 'SOLID' && f.color);
+      if (solidFill) {
+        vecNode.fills = [{ type: 'SOLID', color: solidFill.color }];
+      } else {
+        const strokes = simplifyStrokes(safeGet(node, 'strokes'), safeGet(node, 'strokeWeight'), safeGet(node, 'strokeAlign'));
+        if (strokes && strokes[0] && strokes[0].color) {
+          vecNode.fills = [{ type: 'SOLID', color: strokes[0].color }];
+        }
+      }
+      return vecNode;
     }
 
-    // Component Instances & Variants
+    const pruned = {
+      name: cleanName,
+      type: nodeType,
+    };
+
+    if (safeGet(node, 'visible') === false) pruned.visible = false;
+    if (bounds) pruned.bounds = bounds;
+
+    // Component Instances & Variants (compatible with dynamic-page getMainComponentAsync)
     if (nodeType === 'INSTANCE') {
       try {
-        const main = safeGet(node, 'mainComponent');
+        let main = null;
+        if (typeof node.getMainComponentAsync === 'function') {
+          try {
+            main = await node.getMainComponentAsync();
+          } catch (_) {}
+        }
+        if (!main) {
+          main = safeGet(node, 'mainComponent');
+        }
         if (main) {
           let setName = null;
           try {
@@ -150,8 +468,8 @@ function serializeNode(node, depth = 0) {
           } catch (_) {}
 
           pruned.component = {
-            name: setName || safeGet(main, 'name', pruned.name),
-            variant: safeGet(main, 'name', pruned.name),
+            name: cleanLayerName(setName || safeGet(main, 'name'), pruned.name),
+            variant: cleanLayerName(safeGet(main, 'name'), pruned.name),
           };
         }
       } catch (_) {
@@ -171,35 +489,64 @@ function serializeNode(node, depth = 0) {
       } catch (_) {}
     }
 
+    // 2. Collapse Pure SVG / Icon / Vector Graphic Containers (eliminates hundreds of internal Vector nodes)
+    if (depth > 0 || nodeType === 'GROUP' || nodeType === 'INSTANCE') {
+      const vecCheck = analyzeVectorSubtree(node);
+      if (vecCheck.isPure) {
+        if (nodeType !== 'INSTANCE' && nodeType !== 'COMPONENT') {
+          pruned.type = 'VECTOR';
+          pruned.isSvg = true;
+        } else {
+          assignCleanCornerRadius(node, pruned);
+        }
+        const ownFills = simplifyFills(safeGet(node, 'fills'));
+        if (ownFills) {
+          pruned.fills = ownFills;
+        } else if (vecCheck.primarySolidColor) {
+          pruned.fills = [{ type: 'SOLID', color: vecCheck.primarySolidColor }];
+        }
+        return pruned;
+      }
+    }
+
+    // 3. Collapse Masked Image Groups (photo + mask shape with zero UI text/components)
+    if (depth > 0) {
+      const imgGroup = analyzeMaskedImageSubtree(node);
+      if (imgGroup) {
+        pruned.fills = [{ type: 'IMAGE', scaleMode: imgGroup.scaleMode }];
+        assignCleanCornerRadius(node, pruned);
+        return pruned;
+      }
+    }
+
     // Auto-Layout (Flexbox)
     const layoutMode = safeGet(node, 'layoutMode');
     if (layoutMode && layoutMode !== 'NONE') {
       pruned.layoutMode = layoutMode;
       const primaryAlign = safeGet(node, 'primaryAxisAlignItems');
       const counterAlign = safeGet(node, 'counterAxisAlignItems');
-      if (primaryAlign) pruned.primaryAxisAlignItems = primaryAlign;
-      if (counterAlign) pruned.counterAxisAlignItems = counterAlign;
+      if (primaryAlign && primaryAlign !== 'MIN') pruned.primaryAxisAlignItems = primaryAlign;
+      if (counterAlign && counterAlign !== 'MIN') pruned.counterAxisAlignItems = counterAlign;
 
       const itemSpacing = safeGet(node, 'itemSpacing');
       if (typeof itemSpacing === 'number' && itemSpacing !== 0) {
-        pruned.itemSpacing = itemSpacing;
+        pruned.itemSpacing = Math.round(itemSpacing * 100) / 100;
       }
 
       const pTop = safeGet(node, 'paddingTop');
       const pRight = safeGet(node, 'paddingRight');
       const pBottom = safeGet(node, 'paddingBottom');
       const pLeft = safeGet(node, 'paddingLeft');
-      if (pTop !== undefined || pRight !== undefined || pBottom !== undefined || pLeft !== undefined) {
-        pruned.padding = {
-          top: typeof pTop === 'number' ? pTop : 0,
-          right: typeof pRight === 'number' ? pRight : 0,
-          bottom: typeof pBottom === 'number' ? pBottom : 0,
-          left: typeof pLeft === 'number' ? pLeft : 0,
-        };
+      const top = typeof pTop === 'number' ? pTop : 0;
+      const right = typeof pRight === 'number' ? pRight : 0;
+      const bottom = typeof pBottom === 'number' ? pBottom : 0;
+      const left = typeof pLeft === 'number' ? pLeft : 0;
+      if (top > 0 || right > 0 || bottom > 0 || left > 0) {
+        pruned.padding = { top, right, bottom, left };
       }
 
       const layoutWrap = safeGet(node, 'layoutWrap');
-      if (layoutWrap) pruned.layoutWrap = layoutWrap;
+      if (layoutWrap && layoutWrap !== 'NO_WRAP') pruned.layoutWrap = layoutWrap;
     }
 
     const layoutGrow = safeGet(node, 'layoutGrow');
@@ -223,27 +570,11 @@ function serializeNode(node, depth = 0) {
     );
     if (strokes) pruned.strokes = strokes;
 
-    // Corner Radius
-    const cornerRadius = safeGet(node, 'cornerRadius');
-    if (typeof cornerRadius === 'number' && cornerRadius > 0) {
-      pruned.cornerRadius = cornerRadius;
-    } else {
-      const tl = safeGet(node, 'topLeftRadius');
-      const tr = safeGet(node, 'topRightRadius');
-      const br = safeGet(node, 'bottomRightRadius');
-      const bl = safeGet(node, 'bottomLeftRadius');
-      if (typeof tl === 'number' || typeof tr === 'number' || typeof br === 'number' || typeof bl === 'number') {
-        pruned.cornerRadii = [
-          typeof tl === 'number' ? tl : 0,
-          typeof tr === 'number' ? tr : 0,
-          typeof br === 'number' ? br : 0,
-          typeof bl === 'number' ? bl : 0,
-        ];
-      }
-    }
+    // Corner Radius (only when > 0)
+    assignCleanCornerRadius(node, pruned);
 
     const opacity = safeGet(node, 'opacity');
-    if (typeof opacity === 'number' && opacity !== 1) {
+    if (typeof opacity === 'number' && opacity < 0.999) {
       pruned.opacity = Number(opacity.toFixed(2));
     }
 
@@ -252,58 +583,101 @@ function serializeNode(node, depth = 0) {
     if (Array.isArray(effects) && effects.length > 0) {
       const visibleEffects = effects.filter((e) => e && safeGet(e, 'visible', true) !== false);
       if (visibleEffects.length > 0) {
-        pruned.effects = visibleEffects.map((e) => ({
-          type: safeGet(e, 'type'),
-          radius: safeGet(e, 'radius'),
-          color: safeGet(e, 'color') ? formatRgba(safeGet(e, 'color')) : undefined,
-          offset: safeGet(e, 'offset'),
-        }));
+        pruned.effects = visibleEffects.map((e) => {
+          const eff = { type: safeGet(e, 'type') };
+          const rad = safeGet(e, 'radius');
+          if (typeof rad === 'number' && rad > 0) eff.radius = rad;
+          const col = safeGet(e, 'color') ? formatRgba(safeGet(e, 'color')) : undefined;
+          if (col) eff.color = col;
+          const off = safeGet(e, 'offset');
+          if (off && (off.x || off.y)) eff.offset = off;
+          return eff;
+        });
       }
     }
 
     // Typography (TEXT)
     if (nodeType === 'TEXT') {
-      pruned.characters = safeGet(node, 'characters', '');
-      const font = safeGet(node, 'fontName');
-      const lineHeight = safeGet(node, 'lineHeight');
-      const letterSpacing = safeGet(node, 'letterSpacing');
-      const fontSize = safeGet(node, 'fontSize');
+      const rawChars = safeGet(node, 'characters', '');
+      const hasChars = typeof rawChars === 'string' && rawChars.length > 0;
+      pruned.characters = isRawAssetString(rawChars) ? '[raw-asset-omitted]' : rawChars;
 
-      pruned.typography = {
-        fontFamily: font && typeof font === 'object' ? safeGet(font, 'family') : undefined,
-        fontStyle: font && typeof font === 'object' ? safeGet(font, 'style') : undefined,
-        fontSize: typeof fontSize === 'number' ? fontSize : undefined,
-        lineHeightPx:
-          lineHeight && typeof lineHeight === 'object' && safeGet(lineHeight, 'unit') === 'PIXELS'
-            ? Math.round(safeGet(lineHeight, 'value', 0))
-            : undefined,
-        letterSpacing:
-          letterSpacing && typeof letterSpacing === 'object' ? safeGet(letterSpacing, 'value') : undefined,
-        textAlignHorizontal: safeGet(node, 'textAlignHorizontal'),
-        textAlignVertical: safeGet(node, 'textAlignVertical'),
-      };
+      // Fallback fills when TextNode has mixed character colors (figma.mixed)
+      if (!pruned.fills) {
+        const rangeFills = simplifyFills(safeGetTextProp(node, 'fills', 'getRangeFills', hasChars));
+        if (rangeFills) pruned.fills = rangeFills;
+      }
+
+      const font = safeGetTextProp(node, 'fontName', 'getRangeFontName', hasChars);
+      const lineHeight = safeGetTextProp(node, 'lineHeight', 'getRangeLineHeight', hasChars);
+      const letterSpacing = safeGetTextProp(node, 'letterSpacing', 'getRangeLetterSpacing', hasChars);
+      const fontSize = safeGetTextProp(node, 'fontSize', 'getRangeFontSize', hasChars);
+      const rawWeight = safeGetTextProp(node, 'fontWeight', 'getRangeFontWeight', hasChars);
+
+      const typo = {};
+      const family = font && typeof font === 'object' ? safeGet(font, 'family') : undefined;
+      const fontStyle = font && typeof font === 'object' ? safeGet(font, 'style') : undefined;
+      if (family) typo.fontFamily = family;
+      if (fontStyle) typo.fontStyle = fontStyle;
+
+      const resolvedWeight = resolveFontWeight(rawWeight, fontStyle);
+      if (resolvedWeight) typo.fontWeight = resolvedWeight;
+
+      if (typeof fontSize === 'number') {
+        typo.fontSize = Math.round(fontSize * 100) / 100;
+      }
+      if (lineHeight && typeof lineHeight === 'object') {
+        const lhUnit = safeGet(lineHeight, 'unit');
+        const lhRawVal = safeGet(lineHeight, 'value', 0);
+        if (lhUnit === 'PIXELS' && typeof lhRawVal === 'number') {
+          const lhVal = Math.round(lhRawVal);
+          if (lhVal > 0) typo.lineHeightPx = lhVal;
+        } else if (lhUnit === 'PERCENT' && typeof lhRawVal === 'number' && typeof fontSize === 'number' && fontSize > 0) {
+          const lhVal = Math.round((fontSize * lhRawVal) / 100);
+          if (lhVal > 0) typo.lineHeightPx = lhVal;
+        }
+      }
+      if (letterSpacing && typeof letterSpacing === 'object') {
+        const lsUnit = safeGet(letterSpacing, 'unit');
+        const lsRawVal = safeGet(letterSpacing, 'value');
+        if (typeof lsRawVal === 'number' && Math.abs(lsRawVal) > 0.01) {
+          const lsPx =
+            lsUnit === 'PERCENT' && typeof fontSize === 'number' && fontSize > 0
+              ? (fontSize * lsRawVal) / 100
+              : lsRawVal;
+          if (Math.abs(lsPx) > 0.01) {
+            typo.letterSpacing = Number(lsPx.toFixed(2));
+          }
+        }
+      }
+      const hAlign = safeGet(node, 'textAlignHorizontal');
+      if (hAlign && hAlign !== 'LEFT') typo.textAlignHorizontal = hAlign;
+      const vAlign = safeGet(node, 'textAlignVertical');
+      if (vAlign && vAlign !== 'TOP') typo.textAlignVertical = vAlign;
+
+      if (Object.keys(typo).length > 0) {
+        pruned.typography = typo;
+      }
     }
 
     // Recursively process children
-    const children = safeGet(node, 'children');
-    if (Array.isArray(children) && children.length > 0) {
-      pruned.children = children
-        .filter((c) => {
-          try {
-            return c && safeGet(c, 'visible', true) !== false;
-          } catch (_) {
-            return true;
-          }
-        })
-        .map((child) => serializeNode(child, depth + 1))
-        .filter(Boolean);
+    const visibleKids = getVisibleChildren(node);
+    if (visibleKids.length > 0) {
+      const serializedKids = [];
+      for (const child of visibleKids) {
+        const serializedChild = await serializeNode(child, depth + 1);
+        if (serializedChild) serializedKids.push(serializedChild);
+      }
+      if (serializedKids.length > 0) {
+        pruned.children = serializedKids;
+      }
     }
 
     return pruned;
   } catch (err) {
     console.warn('Fallback serialization for node:', err);
     return {
-      name: safeGet(node, 'name', 'Node'),
+      name: cleanLayerName(safeGet(node, 'name'), 'Node'),
       type: safeGet(node, 'type', 'FRAME'),
     };
   }
@@ -342,7 +716,7 @@ async function exportCurrentSelection() {
   // 1. Serialize AST Node safely
   let ast = null;
   try {
-    ast = serializeNode(node);
+    ast = await serializeNode(node);
   } catch (err) {
     console.error('Failed to serialize AST:', err);
     ast = { name: safeGet(node, 'name', 'spec'), type: safeGet(node, 'type', 'FRAME') };

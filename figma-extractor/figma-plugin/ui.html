@@ -427,7 +427,7 @@
         document.getElementById('node-bounds').textContent = `${w} × ${h} px`;
         document.getElementById('hint-name').textContent = msg.name || 'component';
 
-        const jsonStr = JSON.stringify(msg.spec || {}, null, 2);
+        const jsonStr = JSON.stringify(msg.spec || {});
         const sizeKb = (new Blob([jsonStr]).size / 1024).toFixed(1);
         document.getElementById('node-size').textContent = `${sizeKb} KB`;
 
@@ -472,10 +472,10 @@
       }
     };
 
-    // Copy to clipboard
+    // Copy to clipboard (compact pruned JSON matching CLI default)
     document.getElementById('btn-copy').onclick = async () => {
       if (!currentData) return;
-      const jsonStr = JSON.stringify(currentData.spec, null, 2);
+      const jsonStr = JSON.stringify(currentData.spec);
       const btn = document.getElementById('btn-copy');
       const ok = await copyTextToClipboard(jsonStr);
       if (ok) {
@@ -490,7 +490,7 @@
     // Download JSON
     document.getElementById('btn-download-json').onclick = () => {
       if (!currentData) return;
-      const jsonStr = JSON.stringify(currentData.spec, null, 2);
+      const jsonStr = JSON.stringify(currentData.spec);
       const blob = new Blob([jsonStr], { type: 'application/json' });
       triggerDownload(blob, `${currentData.name}.json`);
       flashButton(document.getElementById('btn-download-json'), '✔ Saved .json');
@@ -506,7 +506,7 @@
     // Download Both (.specs.zip)
     document.getElementById('btn-download-both').onclick = () => {
       if (!currentData) return;
-      const jsonStr = JSON.stringify(currentData.spec, null, 2);
+      const jsonStr = JSON.stringify(currentData.spec);
       const enc = new TextEncoder();
       const files = [
         { name: `${currentData.name}.json`, data: enc.encode(jsonStr) }
