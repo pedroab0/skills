@@ -1,0 +1,40 @@
+[
+  {
+    "id": "fe-01-atomic-spec-ingest",
+    "skills": ["figma-extractor"],
+    "query": "Extract the specification for this card design so we can review the design tokens and layout before coding: https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=4023-474",
+    "expected_behavior": [
+      "Identifies that this is a specification/planning phase request and invokes figma-extractor",
+      "Executes fetch_figma.js with --spec <name> without passing -i (conserving Tier 1 preview quota by default)",
+      "Does NOT invoke browser automation tools (Puppeteer, Playwright, Chrome DevTools) on the Figma URL",
+      "Outputs or updates specification files inside .specs/ (.specs/<name>.json)",
+      "Strictly avoids creating, editing, or scaffolding application source code (.tsx, .jsx, .vue, .css, etc.)",
+      "Presents a structured summary of the extracted design tokens, component instances, and layout dimensions to the user"
+    ]
+  },
+  {
+    "id": "fe-02-missing-token-handling",
+    "skills": ["figma-extractor"],
+    "query": "Sync our design tokens from Figma: https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App",
+    "context": "No FIGMA_ACCESS_TOKEN or FIGMA_TOKEN environment variable or .env file configured in the workspace",
+    "expected_behavior": [
+      "Executes fetch_figma.js with --tokens and receives token error payload",
+      "Does NOT retry in an infinite loop (strictly follows Zero-Hammer Protocol)",
+      "Does NOT attempt to open browser tools or search for local browser profiles/cookies",
+      "Clearly informs the user that FIGMA_ACCESS_TOKEN is required",
+      "Provides exact instructions on how to create a Personal Access Token in Figma Settings and how to export it in their OS environment or .env"
+    ]
+  },
+  {
+    "id": "fe-03-proactive-spec-reuse",
+    "skills": ["figma-extractor"],
+    "query": "Extract the header component from https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=10-20 to .specs/header.json",
+    "context": "File .specs/header.json already exists in the workspace from a previous run",
+    "expected_behavior": [
+      "Runs fetch_figma.js with --spec header without passing --force",
+      "Observes the stdout message indicating local specification reuse (0 API calls)",
+      "Does NOT force a re-fetch or consume Figma API quota unnecessarily",
+      "Summarizes the cached specification details directly from the local artifact"
+    ]
+  }
+]

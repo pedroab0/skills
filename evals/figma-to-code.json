@@ -1,0 +1,37 @@
+[
+  {
+    "id": "ftc-01-one-shot-generation-and-discovery",
+    "skills": ["figma-to-code"],
+    "query": "Directly build this hero banner into our Next.js app: https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=200-50",
+    "expected_behavior": [
+      "Identifies that the user explicitly wants direct code generation and activates figma-to-code",
+      "Executes Phase 1 Codebase Discovery (inspects package.json, Tailwind config, existing components) before generating code",
+      "Fetches the compact AST once via fetch_figma.js without -i (unless user asked for preview)",
+      "Does NOT invoke browser scraping tools",
+      "Adheres strictly to the detected project stack and design tokens",
+      "Executes the project's validation check (typecheck/lint) if defined in package.json"
+    ]
+  },
+  {
+    "id": "ftc-02-skill-disambiguation",
+    "skills": ["figma-to-code", "figma-extractor"],
+    "query": "Can you inspect this Figma file and document its design tokens and component architecture for our planning doc? https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App",
+    "expected_behavior": [
+      "Correctly distinguishes planning/specification intent from immediate code generation",
+      "Does NOT activate figma-to-code (or warns and recommends figma-extractor)",
+      "Uses figma-extractor to generate specification artifacts without modifying application code"
+    ]
+  },
+  {
+    "id": "ftc-03-image-fill-placeholder-protocol",
+    "skills": ["figma-to-code"],
+    "query": "Implement this user profile card: https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=300-12",
+    "context": "Node AST includes a frame with fills: [{ type: 'IMAGE', scaleMode: 'FILL' }] named 'Avatar Picture'",
+    "expected_behavior": [
+      "Applies exact dimensions and border radius from the spec",
+      "Maps scaleMode: 'FILL' to object-cover",
+      "Does NOT hallucinate or fetch random third-party image URLs (e.g. Unsplash, pravatar, placeholder.com)",
+      "Renders a standard <img src=\"\" alt=\"Avatar Picture\" ... /> with an explicit TODO comment indicating target image details"
+    ]
+  }
+]

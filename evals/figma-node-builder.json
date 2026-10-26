@@ -1,0 +1,40 @@
+[
+  {
+    "id": "fnb-01-component-reuse-anti-div",
+    "skills": ["figma-node-builder"],
+    "query": "Implement the UI component from .specs/card.json into our React project",
+    "context": "Project has package.json with React and @/components/ui/button.tsx. The spec has an INSTANCE node with component.name 'Button' and props { variant: 'primary', size: 'large' }",
+    "expected_behavior": [
+      "Performs Phase 1 discovery (inspects package.json and components/ui to identify existing UI primitives)",
+      "Runs inspect_spec.js on .specs/card.json to analyze tokens and instances instead of reading huge raw AST",
+      "Imports and reuses existing <Button /> component with props matching the spec (anti-div soup rule)",
+      "Never rebuilds the button using raw styled <div> or <button> tags",
+      "Maps semantic tokens to project theme classes/variables without hardcoding arbitrary hex colors"
+    ]
+  },
+  {
+    "id": "fnb-02-icon-resolution-hierarchy",
+    "skills": ["figma-node-builder"],
+    "query": "Build the transaction item component from .specs/transaction_row.json",
+    "context": "Spec contains a VECTOR layer named 'icon/arrow-up-right'. The host project has lucide-react installed in package.json",
+    "expected_behavior": [
+      "Normalizes the vector name by stripping prefix to 'arrow-up-right' / 'ArrowUpRight'",
+      "Checks for local icon components first, then resolves to installed library (imports ArrowUpRight from lucide-react)",
+      "Never hallucinates raw SVG <path d='M...'> coordinate strings or Bézier math",
+      "If the icon did not exist in the library, would render an accessible placeholder with a TODO comment"
+    ]
+  },
+  {
+    "id": "fnb-03-validation-feedback-loop",
+    "skills": ["figma-node-builder"],
+    "query": "Build the settings modal from .specs/settings_modal.json into src/components/SettingsModal.tsx",
+    "context": "Project package.json contains a 'typecheck': 'tsc --noEmit' script",
+    "expected_behavior": [
+      "Executes Phase 4 validation by running npm run typecheck (or npx tsc --noEmit)",
+      "Does NOT install any new npm dependencies to execute the check",
+      "If TypeScript reports errors in the newly created component, fixes the issues and re-runs the validation",
+      "Does NOT attempt to refactor pre-existing errors in unrelated files",
+      "Only marks the task as complete after validation passes"
+    ]
+  }
+]
