@@ -1,201 +1,77 @@
 ---
 name: figma-extractor
-description: 'Extract compact JSON node hierarchies, design tokens, component instance props, and automated preview images from Figma using the Figma REST API. Trigger this skill during the planning or specification phase whenever a Figma link is provided or when the user asks to inspect, extract, or sync design specifications and tokens from Figma into .specs/. This skill strictly produces specification artifacts and does not modify application code.'
+description: 'Extracts Figma frames and components into compact JSON spec files (.specs/*.json) with resolved design tokens, normalized component instance props, and optional preview images, using the Figma REST API. Use when the user shares a figma.com link and wants to inspect, extract, document, or plan a design before implementation, or asks to sync Figma variables and design tokens. Produces specification artifacts only and never edits application code. For immediate one-shot code generation from a Figma link, use figma-to-code instead.'
 ---
 
-# Figma Extractor Skill (SDD Spec Ingest)
+# Figma Extractor (SDD Spec Ingest)
 
-Extract design node metadata, component hierarchies, design tokens/variables, and rendered preview images directly from Figma via the Figma REST API into structured specification artifacts (`.specs/`).
+Writes Figma designs to `.specs/<name>.json` (and optionally `.specs/<name>.png`) so a later implementation step can build from a fixed specification. A **spec** is the pruned Figma node tree with resolved tokens and component props.
 
-This skill serves as the **Specification Ingestion Layer** in a **Spec-Driven Development (SDD)** workflow. It is **Design-System Aware**, high-performance, token-efficient, and has zero external dependencies.
+Requires Node.js >= 16.7. The scripts have zero dependencies (no `npm install`).
 
----
+## Boundaries
 
-## Operational Boundary: Spec Ingestion Only
+- Output only `.specs/` artifacts. **Never create or edit application code** (`.tsx`, `.vue`, `.html`, `.css`, ...) while using this skill.
+- **Never open Figma URLs with browser tools** (Playwright, Puppeteer, Chrome DevTools). The Figma canvas is WebGL, so there is no DOM to read. Do not search for local browser binaries.
+- **API errors are final**: report them to the user. Never fall back to scraping.
 
-* **Specification Artifacts Only**: This skill strictly outputs machine-readable design specifications (`.specs/<name>.json`) and visual references (`.specs/<name>.png`).
-* **Zero Application Code Changes**: Do **NOT** create, edit, or modify application source code (`.tsx`, `.vue`, `.html`, `.css`, etc.) while executing this skill.
-* **Hand-off to Implementation**: Once specifications are generated in `./.specs/`, present a summary of the extracted tokens, components, and layout bounds. The implementation phase is handled separately by the developer or a downstream builder skill (such as `figma-node-builder`).
+## Workflow
 
----
+Copy this checklist and track your progress:
 
-## Strict Guardrails: No Browser Scraping / Automation
-
-> [!CAUTION]
-> **NEVER use browser tools (Playwright, Puppeteer, Chrome DevTools, `browser_navigate`, `read_browser_page`) on Figma URLs.**
->
-> 1. **Figma Canvas is WebGL/Wasm**: Figma renders design canvas elements inside an HTML5 `<canvas>` via WebAssembly. There are NO inspectable HTML DOM elements for frames, layers, texts, or styles. Browser automation cannot extract Figma nodes or properties.
-> 2. **Never search for local browser binaries**: Do not search OS application directories (e.g., `/Applications`, `Program Files`, `/usr/bin`) or run browser automation scripts.
-> 3. **API Errors Are Final**: If `fetch_figma.js` returns an API error (e.g., 401 Unauthorized, 403 Forbidden, or 429 Rate Limited), **report the error directly to the user**. Guide them to check their `FIGMA_ACCESS_TOKEN`, permissions, or wait out rate limits. Do NOT attempt browser scraping fallbacks.
-
----
-
-## Built-in Rate-Limit Gate & Circuit Breaker
-
-To protect your Figma file quota and prevent lockout penalties, `fetch_figma.js` enforces an automatic safety gate:
-* **Max 5 requests per minute** per file key (sliding window limit).
-* **2.5s inter-request pacing** between consecutive requests.
-* **Persistent Circuit Breaker**: If Figma returns HTTP 429, the script records the lockout time locally in `.figma_ratelimit.json` inside the user's home directory. All future calls to that file key are **immediately blocked with zero network traffic**, preventing Figma from extending the lockout penalty.
-
-### Agent Behavioral Rules (Zero-Hammer Protocol)
-1. **Single-Shot Execution**: Run `fetch_figma.js` **once** per target frame or component.
-2. **Never Retry on Failure**: If `fetch_figma.js` returns an error, **DO NOT retry in a loop**. Report the error directly to the user.
-3. **Handling `FIGMA_CIRCUIT_BREAKER_ACTIVE`**: If the circuit breaker trips, inform the user that the file key is on cooldown, and suggest duplicating the file in Figma Drafts (Right-click $\rightarrow$ **Duplicate**) to get a fresh URL.
-
----
-
-## Prerequisites
-
-A Figma Access Token (Personal Access Token or OAuth Token) is required.
-
-Configure it using either:
-1. **Environment Variable**:
-   - **macOS / Linux**: `export FIGMA_ACCESS_TOKEN="figd_your_token_here"` (or `FIGMA_TOKEN`)
-   - **Windows (PowerShell)**: `[Environment]::SetEnvironmentVariable("FIGMA_ACCESS_TOKEN", "figd_your_token_here", "User")` or `$env:FIGMA_ACCESS_TOKEN="figd_your_token_here"` in `$PROFILE`
-2. **Workspace `.env` File**:
-   ```env
-   FIGMA_ACCESS_TOKEN=figd_your_token_here
-   ```
-
-### Corporate Proxy & SSL Certificates
-If you are behind a corporate proxy or firewall with self-signed SSL certificates, enable SSL verification bypass:
-```env
-FIGMA_IGNORE_SSL=true
+```
+Extraction Progress:
+- [ ] 1. Run the extraction (once)
+- [ ] 2. Verify the result
+- [ ] 3. Hand off a summary
 ```
 
----
-
-## Tier 1 Quota Conservation: AST-Only by Default
-
-> [!IMPORTANT]
-> **Figma Starter plans enforce a strict limit of 20 Tier 1 requests/month.**
-> Both `GET /v1/files/:key/nodes` and `GET /v1/images/:key` count as Tier 1 endpoints.
->
-> 1. **Default to AST-only extraction**: Running `--spec <name>` without `-i` consumes **only 1 Tier 1 call**. The JSON AST contains 100% of layout rules (flexbox, padding, gap), dimensions, hex colors, corner radii, and text content needed for code generation.
-> 2. **DO NOT pass `-i` / `--image` by default**: Only add `-i` if the user explicitly requests downloading a visual preview screenshot.
-> 3. **Reuse existing specs**: If `.specs/<name>.json` exists, reuse it with **0 API calls**.
-
----
-
-## Agent Execution Instructions
-
-To extract a Figma frame or component as a specification artifact, run `fetch_figma.js` from this skill's `scripts/` directory:
+**1. Run the extraction** (1 Tier 1 API call):
 
 ```bash
-# Recommended: Atomic extraction (writes ./.specs/<name>.json - 1 Tier 1 call)
 node "<skill-dir>/scripts/fetch_figma.js" "<FigmaURL>" --spec <name>
-
-# Optional: With companion preview image (writes .json and .png - 2 Tier 1 calls)
-node "<skill-dir>/scripts/fetch_figma.js" "<FigmaURL>" --spec <name> -i
 ```
 
-**Resolving `<skill-dir>` (Agent-Agnostic)**:
-Substitute `<skill-dir>` with the directory where this skill is installed — **never guess another agent's folder** (always keep double quotes around the script path for Windows/macOS/Linux compatibility):
-- **Standard Skills (`SKILL.md`)**: `<skill-dir>` is the exact parent directory of this `SKILL.md` file.
-- **Cursor Rule (`.cursor/rules/figma-extractor.mdc`)**: `<skill-dir>` is the sibling `.cursor/skills/figma-extractor` directory (replace `rules/figma-extractor.mdc` with `skills/figma-extractor`).
+If `.specs/<name>.json` already exists, the script reuses it with 0 API calls. Pass `--force` only when the user explicitly asks to refresh the spec.
 
----
+**2. Verify the result**
 
-## Usage & Command Formats
+- Success: stdout shows `✔ Saved Figma specification` or `✔ Reusing local Figma specification`.
+- Failure: stderr contains a JSON error payload. Follow [Errors](#errors). Do not retry.
 
-### 1. Atomic Spec Extraction (Recommended SDD Workflow)
+**3. Hand off**: report the spec path and size, the root frame, the main component instances, and the design tokens found. Implementation is handled separately by the developer or by the `figma-node-builder` skill.
 
-Extract node metadata directly into `./.specs/`:
+## Common variants
 
-```bash
-# Atomic AST extraction (1 Tier 1 call - recommended)
-node "<skill-dir>/scripts/fetch_figma.js" "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --spec card
+| Need | Command suffix |
+| :--- | :--- |
+| Preview PNG (only if the user asks; +1 Tier 1 call) | `--spec <name> -i` |
+| Design tokens dictionary only | `--tokens --spec tokens` |
+| Collapse instance internals into props | `--spec <name> --shallow-instances` |
+| Top-level overview of a large frame | `--spec <name> --depth 2` |
 
-# Optional: With rendered preview image (2 Tier 1 calls)
-node "<skill-dir>/scripts/fetch_figma.js" "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --spec card -i
+All CLI flags, the output spec schema, token setup per OS, and proxy options: see [REFERENCE.md](REFERENCE.md) (located at `<skill-dir>/REFERENCE.md`).
 
-# Shallow instances mode (collapses internal component layers into clean props)
-node "<skill-dir>/scripts/fetch_figma.js" "https://www.figma.com/design/:fileKey/:name?node-id=4023-474" --spec card --shallow-instances
-```
+## Resolving `<skill-dir>`
 
-### 2. Design Tokens Dictionary Mode
+Substitute `<skill-dir>` with the directory where this skill is installed. Never guess another agent's folder, and keep the double quotes around the script path (Windows/macOS/Linux):
 
-```bash
-# Export only the file's design token dictionary (colors, spacing, radii) into ./.specs/tokens.json
-node "<skill-dir>/scripts/fetch_figma.js" "https://www.figma.com/design/:fileKey/:name" --tokens --spec tokens
-```
+- **Standard skills (`SKILL.md`)**: the parent directory of this `SKILL.md` file.
+- **Cursor rule (`.cursor/rules/figma-extractor.mdc`)**: the sibling `.cursor/skills/figma-extractor` directory.
 
-### 3. CLI Flags Reference
+## Quota rules (Zero-Hammer Protocol)
 
-| Flag | Shorthand | Description |
-| :--- | :--- | :--- |
-| `--spec <name>` | | **Atomic SDD mode**: Saves `./.specs/<name>.json` (add `-i` to also download preview PNG). |
-| `--image`, `--download-image` | `-i` | Download and save rendered preview image from Figma (Tier 1 call; optional). |
-| `--image-path <path>` | `-o <path>` | Destination path for saved preview image (e.g. `./.specs/preview.png`). |
-| `--tokens`, `--variables` | | Output only the design token dictionary (colors, spacing, radii). |
-| `--shallow-instances` | | Collapse internal sub-layers of component instances into clean props. |
-| `--pretty` | | Pretty-print JSON with 2-space indentation (default is compact single-line JSON). |
-| `--include-tokens` | | Include full design tokens dictionary alongside node AST. |
-| `--include-ids` | | Retain internal Figma node IDs on each node in the tree. |
-| `--raw` | | Return full, unpruned raw Figma API AST. |
-| `--depth <number>` | | Limit node tree traversal depth (e.g. `--depth 2` for top-level overview). |
-| `--scale <1\|2\|3\|4>` | | Render resolution multiplier for preview images (default: `2`). |
-| `--format <png\|svg\|jpg>` | | Rendered image file format (default: `png`). |
-| `--no-variables` | | Skip querying `/variables/local`. |
-| `--help` | `-h` | Show help message. |
+The script enforces a local rate gate and a persistent circuit breaker, but the agent must also follow these rules:
 
----
+1. Run `fetch_figma.js` **once** per target frame or component. **Never retry in a loop.**
+2. **Do not pass `-i`** unless the user explicitly requests a preview image. The JSON spec already contains layout, dimensions, colors, radii, typography, and text.
+3. Figma Starter plans and View seats have very small monthly Tier 1 quotas, so every call matters. Prefer reusing existing specs.
 
-## Output Spec Structure
+## Errors
 
-### 1. Resolved Design Tokens
-When a layer uses Figma variables (design tokens), the extractor attaches semantic token names alongside computed fallback values:
-
-```json
-{
-  "name": "Card Container",
-  "type": "FRAME",
-  "layoutMode": "VERTICAL",
-  "padding": { "top": 16, "right": 16, "bottom": 16, "left": 16 },
-  "paddingToken": "spacing/md",
-  "itemSpacing": 12,
-  "itemSpacingToken": "spacing/sm",
-  "cornerRadius": 8,
-  "cornerRadiusToken": "radii/lg",
-  "fills": [
-    {
-      "type": "SOLID",
-      "color": "#1877F2",
-      "token": "colors/brand/primary"
-    }
-  ]
-}
-```
-
-### 2. Normalized Component Instances & Props
-When an `INSTANCE` node is present, internal property hashes are converted into clean JavaScript props and linked to the master component name:
-
-```json
-{
-  "name": "Submit Button",
-  "type": "INSTANCE",
-  "component": {
-    "name": "Button",
-    "variant": "Variant=Primary, Size=Large"
-  },
-  "props": {
-    "variant": "Primary",
-    "size": "Large",
-    "hasIcon": true,
-    "label": "Confirm Order"
-  },
-  "bounds": { "width": 140, "height": 44 }
-}
-```
-
----
-
-## Error Handling & Troubleshooting
-
-- **Token Expired / Missing (`FIGMA_TOKEN_EXPIRED_OR_INVALID` / `isTokenExpiredOrInvalid`)**:
-  - Alert the user that their Figma access token is missing, invalid, or expired.
-  - Instruct the user to create a token in **Figma Settings → Personal Access Tokens** and configure `FIGMA_ACCESS_TOKEN` in their environment or workspace `.env` file.
-- **Node Not Found**:
-  - Alert the user that the node ID could not be found in the specified file.
-- **Rate Limited (`FIGMA_RATE_LIMIT_EXCEEDED` / `FIGMA_CIRCUIT_BREAKER_ACTIVE`)**:
-  - Figma REST API has per-minute and monthly rate limits on Starter plans. If quota is exhausted or circuit breaker trips, inform the user they can export the specification directly via the companion **Figma Node JSON Extractor** desktop plugin (available on [Figma Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor)) into `./.specs/<name>.json`.
+| Error code | Action |
+| :--- | :--- |
+| `FIGMA_ACCESS_TOKEN is not set` / `FIGMA_TOKEN_EXPIRED_OR_INVALID` | Tell the user the token is missing, invalid, or expired. They create one in **Figma Settings → Personal Access Tokens** and set `FIGMA_ACCESS_TOKEN` (setup per OS in REFERENCE.md). |
+| Node not found | Report that the `node-id` does not exist in the file. |
+| `FIGMA_SSL_CERTIFICATE_ERROR` | Corporate proxy or self-signed certificate: suggest `FIGMA_IGNORE_SSL=true` in `.env`. |
+| `FIGMA_RATE_LIMIT_EXCEEDED` / `FIGMA_CIRCUIT_BREAKER_ACTIVE` | Report the cooldown. Suggest duplicating the file in Figma Drafts (Right-click → **Duplicate**) for a fresh URL, or exporting the selection with the companion [Figma Node JSON Extractor](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) plugin into `.specs/<name>.json`. |

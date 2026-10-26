@@ -1,112 +1,101 @@
 ---
 name: figma-node-builder
-description: 'Build production-ready UI components by synthesizing extracted Figma node hierarchies (.specs/*.json) and companion preview images (.specs/*.png). Trigger this skill in Spec-Driven Development (SDD) workflows when the user asks to implement, build, or code UI components from an existing Figma spec, node AST, or specification file.'
+description: 'Builds production-ready UI components from previously extracted Figma spec files (.specs/*.json) and optional preview images (.specs/*.png), reusing the host project components, design tokens, and icon library. Works offline with no Figma API calls. Use when the user asks to implement, build, or code a component or screen from an existing .specs file, or approves implementation after a figma-extractor run.'
 ---
 
-# Figma Node Builder Skill (SDD Implementation Layer)
+# Figma Node Builder (SDD Implementation Layer)
 
-Build production-grade, design-system-grounded UI components directly from extracted Figma Node trees (`.specs/<name>.json`) and visual reference images (`.specs/<name>.png`).
+Builds UI code from an extracted **spec** (`.specs/<name>.json`, the pruned Figma node tree with resolved tokens and component props) and its optional preview image (`.specs/<name>.png`). Works entirely offline: no Figma API calls or tokens.
 
-This skill serves as the **Implementation Layer** in a **Spec-Driven Development (SDD)** workflow. It works entirely offline and locally from the extracted specification contract—no Figma API calls or tokens required.
+Requires Node.js >= 16.7 for the inspector script (zero dependencies, no `npm install`).
 
----
+## Workflow
 
-## When to Trigger This Skill
+Copy this checklist and track your progress:
 
-Trigger this skill whenever:
-* The user references an existing specification file (e.g., *"Build the component from `.specs/card.json`"*).
-* An extraction step by `figma-extractor` or the **Figma Node JSON Extractor** plugin has completed, and the user approves the implementation (e.g., *"Proceed"*, *"Build it"*, *"Implement the UI"*).
-* The user asks to turn a local Figma node AST (`.specs/<name>.json`) into React, Vue, Svelte, or HTML/CSS code.
-
----
-
-## The 4-Phase Implementation Protocol
-
-```mermaid
-flowchart TD
-    A["Phase 1: Codebase Discovery<br/>(Framework & Existing Primitives)"] --> B["Phase 2: Gap Analysis<br/>(Match Tokens & Props)"]
-    B --> C["Phase 3: Grounded Synthesis<br/>(No Hallucinated CSS)"]
-    C --> D["Phase 4: Visual Verification<br/>(Check vs .specs/*.png)"]
+```
+Implementation Progress:
+- [ ] Phase 1: Discover the host project (stack, UI primitives, tokens, icons)
+- [ ] Phase 2: Inspect the spec and map it to the codebase
+- [ ] Phase 3: Build the component following the build rules
+- [ ] Phase 4: Validate and fix
 ```
 
-### Phase 1: Codebase Discovery
-Before writing any code, inspect the host project to ground your implementation:
-1. **Framework & Styling**: Check `package.json` for React, Vue, Svelte, Next.js, Tailwind CSS, styled-components, or plain CSS.
-2. **Existing UI Primitives**: Inspect `components/ui/`, `src/components/`, or design system libraries (e.g., shadcn/ui, Radix, MUI) to identify reusable components (`Button`, `Input`, `Card`, `Badge`).
-3. **Design Token System**: Inspect `tailwind.config.js`, `theme.css`, or `globals.css` to see how colors and spacing scales are configured.
-4. **Icons & Assets Discovery**: Check `package.json` for installed icon packages (e.g. `lucide-react`, `@heroicons/react`, `phosphor-react`) and check if local icon folders exist (`components/icons/`, `src/assets/`, `public/`).
+### Phase 1: Discover the host project
 
-### Phase 2: Gap Analysis & Token Mapping
-Analyze the input JSON spec (`.specs/<name>.json`).
+Before writing code, ground the implementation in the existing project:
 
-> **Tip**: Instead of reading the entire raw JSON AST into your context window, run the companion **Spec Inspector CLI** from this skill's directory (`<skill-dir>` is the folder containing this `SKILL.md` file; if loaded from `.cursor/rules/figma-node-builder.mdc`, use `.cursor/skills/figma-node-builder`):
-> ```bash
-> # Compact terminal summary (always quote the script path for Windows/macOS/Linux compatibility):
-> node "<skill-dir>/scripts/inspect_spec.js" .specs/<name>.json
->
-> # Output Markdown directly for your implementation plan:
-> node "<skill-dir>/scripts/inspect_spec.js" .specs/<name>.json --markdown
-> ```
+1. **Framework and styling**: check `package.json` for React, Vue, Svelte, Angular, Next.js, Tailwind CSS, styled-components, or plain CSS.
+2. **UI primitives**: inspect `components/ui/`, `src/components/`, or design system libraries (shadcn/ui, Radix, MUI) for reusable components (`Button`, `Input`, `Card`, `Badge`).
+3. **Design tokens**: inspect `tailwind.config.*`, `theme.css`, or `globals.css` for color, spacing, and radius scales.
+4. **Icons**: check `package.json` for icon packages (`lucide-react`, `@heroicons/react`, `phosphor-react`) and local icon folders (`components/icons/`, `src/assets/`, `public/`).
 
-* **Component Instances**: For each node with `type: "INSTANCE"`, match `component.name` against existing codebase components. Extract its `props` (e.g., `{ variant: "outline", size: "lg", hasIcon: true }`).
-* **Design Tokens**: For every `token` property (e.g., `colors/brand/primary`, `spacing/md`, `radii/lg`), map to the project's CSS variables (`var(--color-brand-primary)`) or Tailwind classes (`bg-brand-primary`, `p-4`, `rounded-lg`).
-* **Gaps**: Identify any sub-components that do not exist yet in the codebase and plan to scaffold them.
+### Phase 2: Inspect the spec and map it to the codebase
 
-### Phase 3: Grounded Code Synthesis
-Generate component code strictly adhering to the node specification and adapting syntax to the host project's detected stack (e.g., React, Vue, Svelte, Angular, or HTML/CSS):
+Run the inspector instead of reading the raw JSON into context (resolve `<skill-dir>` as described below):
 
-1. **Reusing Existing Components (Anti-Div Soup Rule)**:
-   - When an `INSTANCE` node matches an existing component, **import and render it directly** (example in JSX — adapt to your framework):
-     ```tsx
-     // Correct:
-     <Button variant="primary" size="large" hasIcon>Confirm Order</Button>
+```bash
+node "<skill-dir>/scripts/inspect_spec.js" .specs/<name>.json --markdown
+```
 
-     // Forbidden (do not rebuild existing primitives from raw divs):
-     <div className="flex bg-blue-500 rounded p-2 text-white">Confirm Order</div>
-     ```
-2. **Layout & Flexbox Translation**:
-   - `layoutMode: "HORIZONTAL"` $\rightarrow$ Flex row (`display: flex; flex-direction: row;` or `flex flex-row`).
-   - `layoutMode: "VERTICAL"` $\rightarrow$ Flex column (`display: flex; flex-direction: column;` or `flex flex-col`).
-   - `itemSpacing` $\rightarrow$ CSS `gap` (map to `itemSpacingToken` if available).
-   - `padding` $\rightarrow$ CSS `padding` (map to `paddingToken` if available).
-   - `primaryAxisAlignItems` / `counterAxisAlignItems` $\rightarrow$ `justify-*` and `items-*`.
-3. **Typography & Colors**:
-   - Never guess hex colors. If `token` is present, use the semantic token. If not, use the fallback `color` hex string.
-   - Map font sizes, font weights, and line heights to existing design tokens or typography classes.
-4. **Icon & Vector Resolution Hierarchy**:
-   When encountering a `VECTOR` node or icon instance:
-   - **Normalize Node Name**: Strip common prefixes (`icon/`, `ic_`, `ico-`) and clean the name (e.g., `icon/search` $\rightarrow$ `search` / `Search`).
-   - **Step 1 (Targeted Local Assets/Components)**: Look for matching files in `components/icons/`, `src/assets/`, or `public/` (e.g., `<SearchIcon />`, `/icons/search.svg`). Avoid recursive searches outside these targeted paths.
-   - **Step 2 (Installed Icon Library)**: If not found locally, import from the icon library detected in `package.json` (e.g., `import { Search } from 'lucide-react'`).
-   - **Step 3 (Semantic Fallback - Never Hallucinate Raw Béziers)**: If not found, render an accessible placeholder (`<span className="w-4 h-4 inline-flex items-center justify-center text-muted-foreground" aria-hidden="true" />`) with a `TODO: Missing icon 'search'` comment. Never hallucinate raw SVG `<path d="...">` coordinates.
-5. **Image Layer Handling (`fills: [{ type: "IMAGE" }]`)**:
-   - Focus exclusively on applying the exact styling from the Figma spec: dimensions (`width`, `height`), border radius (`rounded-*`), and scale mode (`scaleMode: "FILL"` $\rightarrow$ `object-cover`, `"FIT"` $\rightarrow$ `object-contain`).
-   - Do **NOT** attempt to resolve, fetch, or hallucinate image files or external URLs (never invent Unsplash or third-party links).
-   - Render a standard `<img>` tag with `src=""` and a concise `TODO` comment specifying the target image:
-     ```tsx
-     {/* TODO: Add image source for 'User Avatar' (48x48) */}
-     <img src="" alt="User Avatar" className="w-12 h-12 rounded-full object-cover" />
-     ```
+Use `--json` instead of `--markdown` for a structured summary (or `--help` / `-h` for CLI options). Then:
 
-### Phase 4: Visual Cross-Check & Verification
-* **Optional Companion Image**: If the companion preview image (`.specs/<name>.png`) exists, inspect it to cross-check visual styling and icons.
-* **AST-Only Synthesis**: If `.specs/<name>.png` was omitted (to conserve Tier 1 API calls), rely strictly on the exact metrics, flexbox rules, hex colors, and font styles in `.specs/<name>.json`.
-* If a dev server or browser preview is active, verify that the rendered DOM matches the specification.
+- **Component instances**: match each `INSTANCE` `component.name` against existing codebase components and note its `props`.
+- **Design tokens**: map each `token` (`colors/brand/primary`, `spacing/md`, `radii/lg`) to the project CSS variables or Tailwind classes.
+- **Gaps**: list sub-components and tokens that do not exist yet and must be created.
 
----
+Read specific parts of the raw spec only when the inspector summary is not enough.
 
-## Input Spec Reference (Figma Node AST)
+### Phase 3: Build the component
 
-The input `.specs/<name>.json` file contains a pruned AST of Figma nodes:
+Follow the [Build rules](#build-rules), adapting syntax to the stack detected in Phase 1.
 
-| Field | Meaning | Code Mapping |
+### Phase 4: Validate and fix
+
+1. Run the project's existing checks: `typecheck` or `lint` scripts from `package.json`, or `npx tsc --noEmit` when TypeScript is already installed. Never install new dependencies to do this.
+2. If checks fail in the files you created or changed, fix them and run the checks again. Repeat until they pass.
+3. Report pre-existing failures in other files instead of fixing them.
+4. If `.specs/<name>.png` exists, compare it visually with the result. If it does not exist, rely strictly on the metrics in the spec.
+
+## Build rules
+
+1. **Reuse existing components (no div soup)**: when an `INSTANCE` matches an existing component, import and render it with the spec props. Never rebuild existing primitives from raw elements.
+   ```tsx
+   // Correct
+   <Button variant="primary" size="large" hasIcon>Confirm Order</Button>
+   // Forbidden
+   <div className="flex bg-blue-500 rounded p-2 text-white">Confirm Order</div>
+   ```
+2. **Layout**: `layoutMode: "HORIZONTAL"` → flex row; `"VERTICAL"` → flex column; `itemSpacing` → `gap`; `padding` → padding; `primaryAxisAlignItems` / `counterAxisAlignItems` → `justify-*` / `items-*`. Prefer the matching `*Token` when present.
+3. **Colors and typography**: never guess values. Use the semantic `token` when present, otherwise the exact hex `color`. Map font size, weight, and line height to existing typography tokens or classes.
+4. **Icons and vectors** (`VECTOR` nodes, `isSvg: true`, or icon instances): normalize the name by stripping `icon/`, `ic_`, `ico-` (`icon/search` → `search`), then resolve in order:
+   1. Local assets or components in `components/icons/`, `src/assets/`, or `public/` only (no repo-wide searches).
+   2. The icon library installed in `package.json` (e.g. `import { Search } from 'lucide-react'`).
+   3. An accessible placeholder with a `TODO: Missing icon 'search'` comment. Never invent raw SVG `<path d="...">` coordinates.
+5. **Image fills** (`fills: [{ type: "IMAGE" }]`): apply only the spec styling (size, radius, `scaleMode: "FILL"` → `object-cover`, `"FIT"` → `object-contain`). Never fetch or invent image URLs:
+   ```tsx
+   {/* TODO: Add image source for 'User Avatar' (48x48) */}
+   <img src="" alt="User Avatar" className="w-12 h-12 rounded-full object-cover" />
+   ```
+
+## Spec field reference
+
+| Field | Meaning | Code mapping |
 | :--- | :--- | :--- |
-| `type` | Node type (`FRAME`, `INSTANCE`, `TEXT`, `VECTOR`) | Container (`div` / `section`), Component import, Typography tag (`h1`-`p`), or Icon component/placeholder (see Icon Resolution Hierarchy). |
-| `layoutMode` | Auto-layout direction (`HORIZONTAL`, `VERTICAL`) | `flex flex-row` or `flex flex-col`. |
-| `itemSpacing` / `itemSpacingToken` | Gap between child items | `gap-*` class or `gap: Xpx`. |
-| `padding` / `paddingToken` | Object with `top`, `right`, `bottom`, `left` | `p-*`, `px-*`, `py-*` classes or `padding: ...`. |
-| `cornerRadius` / `cornerRadiusToken` | Border radius | `rounded-*` class or `border-radius: Xpx`. |
-| `component.name` | Master component name for an `INSTANCE` | Import name (e.g. `import { Button } from '@/components/ui/button'`). |
-| `props` | Normalized component variant and boolean properties | JSX/template props: `<Component {...props} />`. |
-| `bounds` | Render dimensions (`width`, `height`) | Sizing constraints (`w-*`, `h-*`, `max-w-*`). |
-| `fills` | Fill layers (`SOLID`, `IMAGE`, gradients) | Background color (`bg-*`), gradient, or styled `<img>` tag for `IMAGE` fills (see Image Layer Handling). |
+| `type` | `FRAME`, `INSTANCE`, `TEXT`, `VECTOR` | Container, component import, typography tag, or icon (rule 4). |
+| `layoutMode` | `HORIZONTAL` / `VERTICAL` auto-layout | `flex flex-row` / `flex flex-col`. |
+| `itemSpacing` / `itemSpacingToken` | Gap between children | `gap-*` or `gap: Xpx`. |
+| `padding` / `paddingToken` | `{ top, right, bottom, left }` | `p-*`, `px-*`, `py-*` or `padding`. |
+| `cornerRadius` / `cornerRadiusToken` | Border radius | `rounded-*` or `border-radius`. |
+| `component.name` | Master component of an `INSTANCE` | Import name (`import { Button } from '@/components/ui/button'`). |
+| `props` | Normalized variant and boolean props | Component props (`<Component {...props} />`). |
+| `bounds` | `{ width, height }` | Sizing (`w-*`, `h-*`, `max-w-*`). |
+| `fills` | `SOLID`, `IMAGE`, gradients | Background, gradient, or `<img>` (rule 5). |
+| `characters` / `typography` | Text content and font metrics | Text node with mapped typography classes. |
+
+## Resolving `<skill-dir>`
+
+Substitute `<skill-dir>` with the directory where this skill is installed, keeping the double quotes around the script path (Windows/macOS/Linux):
+
+- **Standard skills (`SKILL.md`)**: the parent directory of this `SKILL.md` file.
+- **Cursor rule (`.cursor/rules/figma-node-builder.mdc`)**: the sibling `.cursor/skills/figma-node-builder` directory.
