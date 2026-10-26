@@ -129,6 +129,7 @@ node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens --spec tokens
 | `--spec <name>` | | **Atomic SDD mode**: Saves `./.specs/<name>.json` (add `-i` to also download preview PNG). |
 | `--image`, `--download-image` | `-i` | Download and save rendered preview image from Figma (Tier 1 call; optional). |
 | `--image-path <path>` | `-o <path>` | Custom destination path for saved preview image (e.g., `./.specs/card.png`). |
+| `--force`, `--fresh` | `-f` | Ignore existing local spec/preview and re-fetch freshly from Figma. |
 | `--tokens`, `--variables` | | Export only the file's design token dictionary (colors, spacing, radii). |
 | `--shallow-instances` | | Collapse internal layers of component instances into clean props. |
 | `--include-tokens` | | Bundle complete design tokens dictionary alongside the node tree. |
@@ -137,7 +138,7 @@ node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens --spec tokens
 | `--raw` | | Return full unpruned Figma API response without filtering. |
 | `--depth <number>` | | Limit node tree traversal depth (e.g., `--depth 2` for top-level layout only). |
 | `--scale <1\|2\|3\|4>` | | Multiplier for rendered image resolution (default: `2`). |
-| `--format <png\|svg\|jpg>` | | Image format for downloaded preview (default: `png`). |
+| `--format <png\|svg\|jpg\|pdf>` | | Image format for downloaded preview (default: `png`). |
 | `--no-variables` | | Skip querying local variables to speed up extraction. |
 | `--help` | `-h` | Display command usage and available flags. |
 

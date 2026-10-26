@@ -1382,6 +1382,7 @@ Usage:
 Options:
   --image, -i                  Download rendered preview image from Figma (Tier 1 call; optional)
   --image-path, -o <path>      Target path for saved preview image (implies --image)
+  --force, -f                  Ignore existing local preview image and re-fetch from Figma
   --tokens, --variables        Export only the design token dictionary (colors, spacing, radii)
   --shallow-instances          Collapse internal layers of component instances into props
   --include-tokens             Include complete tokens dictionary in node output
