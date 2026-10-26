@@ -72,8 +72,36 @@ ${style.bold('Examples:')}
 }
 
 // -----------------------------------------------------------------------------
-// Skill Discovery
+// Frontmatter & Skill Discovery
 // -----------------------------------------------------------------------------
+
+function parseFrontmatterField(content, field) {
+  const fm = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!fm) return '';
+  const lines = fm[1].split(/\r?\n/);
+  const line = lines.find((l) => l.startsWith(`${field}:`));
+  if (!line) return '';
+  const raw = line.slice(field.length + 1).trim();
+  if (raw.startsWith("'") && raw.endsWith("'")) {
+    return raw.slice(1, -1).replace(/''/g, "'");
+  }
+  if (raw.startsWith('"') && raw.endsWith('"')) {
+    try {
+      return JSON.parse(raw);
+    } catch (_) {
+      return raw.slice(1, -1);
+    }
+  }
+  return raw;
+}
+
+function rewriteRelativeLinksForCursor(body, skill) {
+  return body.replace(/\]\((?!https?:|#|\/)([^)\s#]+\.md)(#[^)]*)?\)/g, (m, rel, hash = '') => {
+    return fs.existsSync(path.join(skill.path, rel))
+      ? `](../skills/${skill.name}/${rel}${hash || ''})`
+      : m;
+  });
+}
 
 function getAvailableSkills() {
   const skills = [];
@@ -87,10 +115,7 @@ function getAvailableSkills() {
           let description = '';
           try {
             const content = fs.readFileSync(skillMdPath, 'utf8');
-            const match = content.match(/description:\s*['"]?([^'"\n\r]+)['"]?/);
-            if (match) {
-              description = match[1].trim();
-            }
+            description = parseFrontmatterField(content, 'description');
           } catch (_) {}
           skills.push({
             name: entry.name,
@@ -543,11 +568,14 @@ function installSkill(skill, destDir, useSymlink = false, isCursor = false) {
     fs.cpSync(skill.path, cursorSkillsDir, { recursive: true, filter: copyFilter });
 
     const rawSkillMd = fs.readFileSync(path.join(skill.path, 'SKILL.md'), 'utf8');
-    const skillBody = rawSkillMd.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n*/, '');
+    const skillBody = rewriteRelativeLinksForCursor(
+      rawSkillMd.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n*/, ''),
+      skill,
+    );
     const ruleFile = path.join(destDir, `${skill.name}.mdc`);
     const ruleContent = `---
-description: ${skill.description}
-globs: *
+description: ${JSON.stringify(skill.description)}
+alwaysApply: false
 ---
 
 ${skillBody}`;
@@ -880,6 +908,8 @@ if (require.main === module) {
 
 module.exports = {
   selectPrompt,
+  parseFrontmatterField,
+  rewriteRelativeLinksForCursor,
   getAvailableSkills,
   getAgentConfigs,
   checkFigmaToken,

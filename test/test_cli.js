@@ -3,16 +3,36 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execSync } = require('child_process');
-const { getAvailableSkills, getAgentConfigs, checkFigmaToken, installSkill } = require('../bin/cli.js');
+const {
+  getAvailableSkills,
+  getAgentConfigs,
+  checkFigmaToken,
+  installSkill,
+  parseFrontmatterField,
+  rewriteRelativeLinksForCursor,
+} = require('../bin/cli.js');
 
 console.log('--- Running CLI & Installer Unit Tests ---');
 
-// 1. Skill Discovery
+// 1. Skill Discovery & Frontmatter Parsing
 const skills = getAvailableSkills();
 assert.strictEqual(skills.length, 3, 'Should discover exactly 3 skills');
 const skillNames = skills.map((s) => s.name).sort();
 assert.deepStrictEqual(skillNames, ['figma-extractor', 'figma-node-builder', 'figma-to-code']);
-console.log('  ✓ getAvailableSkills: discovers all 3 skills');
+
+assert.strictEqual(
+  parseFrontmatterField("---\nname: test\ndescription: 'Simple text with ''nested'' quotes'\n---\nBody", 'description'),
+  "Simple text with 'nested' quotes",
+);
+assert.strictEqual(
+  parseFrontmatterField('---\nname: test\ndescription: "Double \\"quoted\\" text"\n---\nBody', 'description'),
+  'Double "quoted" text',
+);
+assert.strictEqual(
+  parseFrontmatterField('---\nname: test\ndescription: Plain text\n---\nBody', 'description'),
+  'Plain text',
+);
+console.log('  ✓ getAvailableSkills & parseFrontmatterField: discovers skills and robustly parses frontmatter');
 
 // 2. Agent Configs
 const configs = getAgentConfigs('/mock/project');
@@ -40,17 +60,26 @@ try {
   assert.strictEqual(res.isSymlink, false);
   console.log('  ✓ installSkill: copies lean skill directory without demo, tests, or marketing assets');
 
-  // 4. installSkill - Cursor .mdc rule creation (no duplicate frontmatter) + default workspace scope
+  // 4. installSkill - Cursor .mdc rule creation (no duplicate frontmatter, alwaysApply: false, rewritten relative links)
   const cursorProjectDir = path.join(tmpDir, 'cursor-project');
   const cursorRulesDir = path.join(cursorProjectDir, '.cursor', 'rules');
+  const cursorSkillsDir = path.join(cursorProjectDir, '.cursor', 'skills', 'figma-extractor');
   const cursorRes = installSkill(figmaExtractor, cursorRulesDir, false, true);
   assert.strictEqual(cursorRes.isCursorRule, true);
   assert.ok(fs.existsSync(path.join(cursorRulesDir, 'figma-extractor.mdc')));
-  assert.ok(fs.existsSync(path.join(cursorProjectDir, '.cursor', 'skills', 'figma-extractor', 'scripts', 'fetch_figma.js')));
+  assert.ok(fs.existsSync(path.join(cursorSkillsDir, 'scripts', 'fetch_figma.js')));
+  assert.ok(fs.existsSync(path.join(cursorSkillsDir, 'REFERENCE.md')), 'REFERENCE.md should be copied to cursor skills directory');
+
   const mdcContent = fs.readFileSync(path.join(cursorRulesDir, 'figma-extractor.mdc'), 'utf8');
   assert.ok(mdcContent.startsWith('---\ndescription:'));
-  assert.ok(mdcContent.includes('globs: *'));
+  assert.ok(mdcContent.includes(`description: ${JSON.stringify(figmaExtractor.description)}`));
+  assert.ok(mdcContent.includes('alwaysApply: false'), 'Should use agent-requested alwaysApply: false');
+  assert.ok(!mdcContent.includes('globs: *'), 'Should not use eager globs: *');
   assert.ok(!mdcContent.includes('name: figma-extractor'), 'Inner SKILL.md frontmatter should be stripped');
+  assert.ok(
+    mdcContent.includes('](../skills/figma-extractor/REFERENCE.md)'),
+    'Relative markdown links to skill files should be rewritten for Cursor rule location',
+  );
 
   // Verify --agent cursor without --global defaults to workspace-local .cursor/rules
   const cursorFlagProject = path.join(tmpDir, 'cursor-flag-project');
