@@ -18,3 +18,4 @@ To run an evaluation:
 - `figma-extractor.json`: Ingest boundaries, quota preservation, and proactive spec reuse.
 - `figma-node-builder.json`: Component reuse (anti-div soup), icon fallback protocol, and validation feedback loops.
 - `figma-to-code.json`: Disambiguation from extractor, codebase discovery, and image placeholder protocol.
+- `generate-meta-repo.json`: Greenfield polyglot meta-repo scaffolding, existing local clone migration, and incremental Day-2 workspace evolution.

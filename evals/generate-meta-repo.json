@@ -1,0 +1,41 @@
+[
+  {
+    "id": "gmr-01-greenfield-polyglot-scaffolding",
+    "skills": ["generate-meta-repo"],
+    "query": "Create a meta-repo named acme-workspace (CLI alias: acme) for our platform: web-portal (Next.js, frontend, checkout product, port 3000, runs on host with pnpm dev, git@github.com:acme/web-portal.git), checkout-api (Node.js, backend, checkout product, port 4001, runs in docker, git@github.com:acme/checkout-api.git), billing-api (Go, backend, billing product, port 4002, runs in docker, git@github.com:acme/billing-api.git), and legacy-monolith (PHP, legacy, branch master, git@github.com:acme/legacy-monolith.git). Backing infra: Postgres 16 and Redis 7.",
+    "expected_behavior": [
+      "Reads meta-repo-architecture-guide.md before generating any workspace files",
+      "Creates repos.json as the single source of truth with unique names, paths, ports, categories, and execution modes, and configures .gitignore to ignore /apps/, /services/, /legacy/, and .specs/",
+      "Generates the 4 zero-dependency Node.js scripts (scripts/bootstrap.mjs, scripts/run.mjs, scripts/install-cli.mjs, scripts/check-manifest.mjs) and a Makefile with literal TAB indentation deriving REPO_PATHS from repos.json",
+      "Configures docker-compose.dev.yml with healthchecked postgres and redis containers and docker services named identically to repos.json (checkout-api, billing-api)",
+      "Generates README.md, layered AGENTS.md, CLAUDE.md (importing @AGENTS.md without duplicating rules), and acme.code-workspace following all 7 Workspace Guidelines (excluding legacy-monolith from active folders)",
+      "Executes Phase 6 validation by running node scripts/check-manifest.mjs and node scripts/bootstrap.mjs --all --dry-run until both pass with 0 errors"
+    ]
+  },
+  {
+    "id": "gmr-02-existing-local-clones-migration",
+    "skills": ["generate-meta-repo"],
+    "query": "Organize our existing repositories on disk (../web-app, ../orders-service, and a local-only prototype ../sandbox-ui that has no GitHub remote yet) into a new meta-repo without losing our uncommitted changes or .env files.",
+    "context": "../web-app and ../orders-service are existing Git clones with uncommitted changes and local .env files; ../sandbox-ui has a local .git folder but no remote origin configured.",
+    "expected_behavior": [
+      "Inspects the existing local directories (git remote get-url origin, default branch, package.json/go.mod, .env.example) to auto-detect remotes, stacks, ports, and checks",
+      "Sets \"remote\": null for sandbox-ui in repos.json so scripts/bootstrap.mjs safely skips it without failing",
+      "Proposes or performs moving (mv) the existing local clones into their target paths inside the meta-repo to preserve uncommitted changes, local branches, .env files, and node_modules",
+      "Ensures scripts/bootstrap.mjs runs git fetch --all --prune ([UPDATE]) when <path>/.git already exists instead of overwriting or re-cloning",
+      "Validates the resulting workspace with node scripts/check-manifest.mjs and node scripts/bootstrap.mjs --all --dry-run"
+    ]
+  },
+  {
+    "id": "gmr-03-incremental-evolution-and-sync",
+    "skills": ["generate-meta-repo"],
+    "query": "Update our existing acme-workspace meta-repo: add notification-worker (Python with uv, path workers/notification, backend category, port 4003, runs in docker, git@github.com:acme/notification-worker.git, requires RabbitMQ) and deprecate web-legacy by moving it to the legacy category.",
+    "context": "Workspace already contains repos.json, .gitignore, Makefile, docker-compose.dev.yml, acme.code-workspace, AGENTS.md, CLAUDE.md, and README.md.",
+    "expected_behavior": [
+      "Detects Evolution Mode (existing repos.json) and inspects current workspace files before applying surgical updates",
+      "Updates repos.json with notification-worker and sets web-legacy category to \"legacy\", and adds /workers/ to .gitignore",
+      "Updates Makefile install target to support Python/uv and updates docker-compose.dev.yml with a healthchecked rabbitmq service and notification-worker container without erasing existing custom rules",
+      "Synchronizes AGENTS.md (Workspace Map), CLAUDE.md (stack snapshot), README.md (ports and directories), and acme.code-workspace (adds Notification Worker and removes web-legacy from active folders)",
+      "Runs node scripts/check-manifest.mjs and node scripts/bootstrap.mjs --all --dry-run to verify zero drift across the updated meta-repo"
+    ]
+  }
+]

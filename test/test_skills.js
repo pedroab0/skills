@@ -123,7 +123,13 @@ for (const skillDir of SKILL_DIRS) {
     }
   }
 
-  console.log(`  ✓ ${skillDir}: frontmatter, conciseness (${bodyLines} lines), links & 1-level references verified`);
+  // 6b. Evaluation rubric check (evals/<skill>.json)
+  const evalPath = path.join(ROOT_DIR, 'evals', `${skillDir}.json`);
+  assert.ok(fs.existsSync(evalPath), `Evaluation rubric evals/${skillDir}.json must exist`);
+  const evalData = JSON.parse(fs.readFileSync(evalPath, 'utf8'));
+  assert.ok(Array.isArray(evalData) && evalData.length >= 3, `evals/${skillDir}.json must contain at least 3 evaluation scenarios`);
+
+  console.log(`  ✓ ${skillDir}: frontmatter, conciseness (${bodyLines} lines), links, 1-level references & evals verified`);
 }
 
 // 7. CLI flags parity checks between scripts and documentation
