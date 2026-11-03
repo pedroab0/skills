@@ -22,6 +22,8 @@
   },
   "keywords": [
     "ai-agents",
+    "agent-skills",
+    "ai-skills",
     "skills",
     "claude-code",
     "cursor",
@@ -30,7 +32,9 @@
     "opencode",
     "figma",
     "design-tokens",
-    "spec-driven-development"
+    "spec-driven-development",
+    "meta-repo",
+    "developer-tools"
   ],
   "author": "Pedro Barbosa <p.brbsa@gmail.com>",
   "license": "MIT",
@@ -42,6 +46,7 @@
     "figma-to-code",
     "figma-extractor",
     "figma-node-builder",
+    "generate-meta-repo",
     "README.md",
     "LICENSE",
     "!**/demo/**",

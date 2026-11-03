@@ -6,14 +6,17 @@ This document defines the architecture, operational rules, code standards, Git/r
 
 ## 1. Repository Overview (`@pedroab0/skills`)
 
-This repository is an open-source suite of modular **Agent Skills** for frontend Spec-Driven Development (**SDD**):
-- **`figma-extractor`**: Specification ingestion layer. Connects to the Figma REST API, extracts a pruned AST, resolved design tokens, and normalized component instances into `./.specs/<name>.json`.
-- **`figma-node-builder`**: Implementation layer. Builds UI components in actual code (React, Vue, Svelte, Tailwind, etc.) from the local spec (`.specs/*.json`), operating 100% offline.
-- **`figma-to-code`**: Direct one-shot converter. For when the user wants immediate code generated from a Figma link without intermediate spec review.
-- **`bin/cli.js`**: Interactive CLI installer (`npx @pedroab0/skills`) compatible with multiple agents (Claude Code, Cursor, Kiro, Antigravity, OpenCode).
-- **`figma-extractor/figma-plugin/`**: Official Figma Desktop companion plugin (*Figma Node JSON Extractor*) for zero-API exports.
-- **`evals/`**: Data-driven benchmark evaluation rubrics across model tiers (Haiku, Sonnet, Opus).
-- **`test/`**: Unit test suites for scripts, installer CLI, and continuous documentation parity linter (`test_skills.js`).
+This repository is an open-source suite of modular, cross-agent **Agent Skills** designed to augment AI coding assistants (Claude Code, Google Antigravity, Cursor, Kiro, OpenCode, Codex, etc.) across diverse software engineering domains:
+- **Architecture & Workspace Engineering**:
+  - **`generate-meta-repo`**: Scaffolds a Manifest-based Multi-root Workspace (Meta-Repo) with `repos.json`, zero-dependency scripts, `Makefile`, Docker Compose dev stack, `.code-workspace`, and layered AI governance (`AGENTS.md`, `CLAUDE.md`).
+- **Design, UI & Spec-Driven Development (SDD)**:
+  - **`figma-extractor`**: Specification ingestion layer. Connects to the Figma REST API, extracts a pruned AST, resolved design tokens, and normalized component instances into `./.specs/<name>.json`. Includes the official Figma Desktop companion plugin (*Figma Node JSON Extractor*) for zero-API exports.
+  - **`figma-node-builder`**: Implementation layer. Builds UI components in actual code (React, Vue, Svelte, Tailwind, etc.) from the local spec (`.specs/*.json`), operating 100% offline without visual hallucinations.
+  - **`figma-to-code`**: Direct one-shot converter. Single-turn conversion from Figma links into production UI components for rapid prototyping.
+- **Ecosystem Infrastructure & Tooling**:
+  - **`bin/cli.js`**: Interactive CLI installer (`npx @pedroab0/skills`) compatible with all major AI agents.
+  - **`evals/`**: Data-driven benchmark evaluation rubrics across model tiers (Haiku, Sonnet, Opus).
+  - **`test/`**: Zero-dependency test harnesses and continuous documentation parity linter (`test_skills.js`).
 
 ---
 
@@ -101,7 +104,14 @@ All skills in this repository must strictly adhere to the Anthropic Agent Skills
 
 ## 4. Architecture and Code Guidelines
 
-### A. Zero-Hammer Protocol (Rate-Limit & Quota Protection)
+### A. Universal Guidelines for All Agent Skills
+- **Zero External Runtime Dependencies**: All helper scripts in `scripts/` must strictly use Node.js built-ins (`fs`, `path`, `https`, `http`, `os`, `url`, `crypto`). Never introduce runtime dependencies in `package.json`.
+- **Progressive Disclosure**: Keep `SKILL.md` body under 500 lines (recommended: 70–150 lines). Deep configuration tables, full schemas, and OS setup guides must reside in `REFERENCE.md` at 1 level depth.
+- **Cross-Platform Compatibility**: Always use forward slashes (`/`) in documentation file paths and scripts. Wrap script paths in quotes. Support UTF-8 and UTF-16LE encoding.
+- **Deterministic Artifact Contracts**: Skills producing specs, code, or workspace manifests must write only to explicit, user-designated folders (`./.specs/`, target workspace directories) and never mutate external files.
+
+### B. Domain Guidelines: Design & Spec-Driven Development (SDD)
+#### 1. Zero-Hammer Protocol (Rate-Limit & Quota Protection)
 - The Figma API enforces tight monthly Tier 1 rate limits on Starter plans and View seats.
 - **AST-only by default**: `fetch_figma.js` runs without `-i` by default (consuming only 1 Tier 1 call). Only download PNG previews when explicitly requested by the user.
 - **Single-Shot Execution**: the script is executed **exactly once** per frame or component. **Never retry in a loop upon errors**.
@@ -109,7 +119,7 @@ All skills in this repository must strictly adhere to the Anthropic Agent Skills
 - **Proactive Reuse**: if `.specs/<name>.json` exists locally, the script reuses the local spec with 0 API calls, unless `--force` or `-f` is provided.
 - **Strict Anti-Scraping Rule**: never attempt to scrape Figma URLs using Playwright, Puppeteer, or Chrome DevTools (the Figma canvas is rendered via WebGL/Wasm and has no inspectable HTML DOM).
 
-### B. Anti-Div Soup and Visual Fidelity in Builder
+#### 2. Anti-Div Soup and Visual Fidelity in Builder
 - **Primitive Component Reuse**: when an AST node is of type `INSTANCE` and has an equivalent component in the host project (`Button`, `Input`, `Card`, `Badge`), **import and render the component directly with matching props**. Never reconstruct the component out of generic styled `<div>` elements.
 - **Semantic Design Tokens**: if the `token` property is present (`colors/brand/primary`, `spacing/md`, `radii/lg`), map it to the host theme's CSS variable or utility class (Tailwind). Do not hardcode arbitrary raw hex values.
 - **Icon Resolution Hierarchy**:
@@ -117,6 +127,11 @@ All skills in this repository must strictly adhere to the Anthropic Agent Skills
   2. Installed icon library in `package.json` (`lucide-react`, `@heroicons/react`, etc.).
   3. Accessible semantic placeholder (`<span aria-hidden="true" />`) with comment `TODO: Missing icon 'name'`. **Never hallucinate complex SVG `<path d="...">` coordinates**.
 - **Image Layers**: style the container only (`width`, `height`, `rounded`, `object-cover` for `scaleMode: FILL`) and render `<img src="" alt="..." />` with a `TODO` comment. **Never invent external image URLs (e.g. Unsplash placeholders)**.
+
+### C. Domain Guidelines: Architecture & Workspace Engineering
+- **Zero-Dependency Orchestration**: Scaffolding scripts generated by `generate-meta-repo` must execute natively in standard POSIX shells (`sh`, `bash`, `zsh`) and Windows (`cmd`, `PowerShell`) without third-party workspace managers.
+- **Manifest as Single Source of Truth**: The workspace must be anchored by `repos.json`, declaring git clone URLs, target paths, branches, and cross-repo dependencies.
+- **Layered AI Governance**: Workspace generators must establish hierarchical rules: a root `AGENTS.md` / `CLAUDE.md` governing cross-repo boundaries, and sub-repo rules governing domain-specific code.
 
 ---
 

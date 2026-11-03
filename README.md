@@ -3,49 +3,74 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/@pedroab0/skills"><img src="https://img.shields.io/npm/dm/@pedroab0/skills.svg" alt="npm downloads" /></a>
   <a href="https://www.npmjs.com/package/@pedroab0/skills"><img src="https://img.shields.io/npm/v/@pedroab0/skills.svg" alt="npm version" /></a>
-  <a href="https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor"><img src="https://img.shields.io/badge/Figma_Community-Plugin-000000?style=flat&logo=figma&logoColor=white" alt="Figma Community Plugin" /></a>
+  <a href="https://github.com/pedroab0/skills"><img src="https://img.shields.io/badge/Agents-Claude%20Code%20%7C%20Cursor%20%7C%20Antigravity%20%7C%20Kiro%20%7C%20OpenCode-blueviolet.svg" alt="Supported Agents" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
 </p>
 
-A curated collection of modular, production-ready skills developed for AI coding agents (such as Claude Code, OpenCode, Codex, Google Antigravity, Cursor, and Kiro).
+A curated collection of modular, production-ready **Agent Skills** developed for AI coding assistants (such as Claude Code, Google Antigravity, Cursor, Kiro, OpenCode, and Codex) across diverse software engineering disciplines.
 
-Each skill in this repository is designed to give AI assistants specialized, autonomous capabilities while maintaining:
-- **Token Efficiency**: Pruning unnecessary data and noise to keep agent context windows lean and fast.
-- **Zero or Minimal Dependencies**: Standalone scripts that execute on demand without fragile background daemons.
-- **Domain Intelligence**: Structured, context-aware outputs (such as resolved design tokens and component props) that allow agents to generate production-quality code.
+Each skill gives autonomous AI assistants specialized, production-grade capabilities while upholding four core architectural pillars:
+- **Token Efficiency**: Compact, high-signal instruction sets (< 500 lines) with progressive disclosure (`REFERENCE.md`) to keep agent context windows lean and fast.
+- **Zero External Dependencies**: Standalone Node.js runtime scripts that execute instantly on demand using built-in modules (`fs`, `path`, `https`, `crypto`), eliminating `node_modules` overhead and daemon fragility.
+- **Domain Intelligence**: Deterministic procedural workflows, normalized ASTs, resolved design tokens, and workspace orchestration instead of shallow prompt wrappers.
+- **Cross-Agent Portability**: Built strictly on the open **Anthropic Agent Skills standard** (`SKILL.md`), running natively across Claude Code, Cursor, Antigravity, Kiro, and OpenCode.
 
 ---
 
-## Available Skills
+## Available Skills by Domain
 
-| Skill | Role / Workflow | Description | Links |
+### 1. Architecture & Workspace Engineering
+
+| Skill | Focus | Description | Links |
+| :--- | :--- | :--- | :--- |
+| **[`generate-meta-repo`](./generate-meta-repo)** | **Architecture & Governance** | Scaffolds a Manifest-based Multi-root Workspace (Meta-Repo) with `repos.json`, zero-dependency orchestration scripts, `Makefile`, Docker Compose dev stack, `.code-workspace`, and layered AI governance (`AGENTS.md`, `CLAUDE.md`). | [Guide](./generate-meta-repo/README.md) · [Blueprint](./generate-meta-repo/meta-repo-architecture-guide.md) · [`SKILL.md`](./generate-meta-repo/SKILL.md) |
+
+### 2. Design, UI & Spec-Driven Development (SDD)
+
+| Skill | Focus | Description | Links |
 | :--- | :--- | :--- | :--- |
 | **[`figma-to-code`](./figma-to-code)** | **One-Shot / Fast Prototyping** | Direct, single-turn conversion of Figma designs into clean, production-ready UI components. Best for rapid prototyping and standalone components. | [Guide](./figma-to-code/README.md) · [`SKILL.md`](./figma-to-code/SKILL.md) |
-| **[`figma-extractor`](./figma-extractor)** | **SDD Step 1 (Ingest)** | Pure specification scraper (CLI / REST API) and companion Figma Desktop plugin that pull compact layout trees, design tokens, and preview images into `./.specs/`. Never touches application code. | [Guide](./figma-extractor/README.md) · [Plugin](./figma-extractor/figma-plugin/README.md) · [Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) · [`SKILL.md`](./figma-extractor/SKILL.md) |
-| **[`figma-node-builder`](./figma-node-builder)** | **SDD Step 2 (Implement)** | Grounded UI builder that reads extracted Figma Node specifications (`.specs/*.json`) and preview images (`*.png`) to build components without CSS hallucinations. | [Guide](./figma-node-builder/README.md) · [`SKILL.md`](./figma-node-builder/SKILL.md) |
+| **[`figma-extractor`](./figma-extractor)** | **SDD Step 1 (Ingest)** | Pure specification scraper (CLI / REST API) and companion Figma Desktop plugin that extract compact layout trees, design tokens, and preview images into `./.specs/`. Never touches application code. | [Guide](./figma-extractor/README.md) · [Plugin](./figma-extractor/figma-plugin/README.md) · [Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) · [`SKILL.md`](./figma-extractor/SKILL.md) |
+| **[`figma-node-builder`](./figma-node-builder)** | **SDD Step 2 (Implement)** | Grounded UI builder that reads extracted Figma Node specifications (`.specs/*.json`) and companion preview images (`*.png`) to build components without CSS hallucinations. | [Guide](./figma-node-builder/README.md) · [`SKILL.md`](./figma-node-builder/SKILL.md) |
+
+### 3. Community Ecosystem & Roadmap
+
+We actively welcome ideas and contributions to expand the catalog across new engineering domains:
+- **Backend & APIs**: OpenAPI/AsyncAPI scaffolders, RPC/gRPC contracts, and deterministic API mocking.
+- **Database & Data Modeling**: Schema inspection, migration generators, and seed data synthesis.
+- **Testing, QA & Security**: Deterministic test scaffolding, accessibility (a11y) audits, and benchmark rubrics.
+- **DevOps & Tooling**: CI/CD pipeline synthesizers, release automation, and environment validators.
 
 ---
 
-## Two Supported Workflows
+## Featured Agent Workflows
 
 ```mermaid
 flowchart TD
-    subgraph PathA ["⚡ Workflow A: Fast Prototyping (One-Shot)"]
-        A1["Figma URL"] --> A2["figma-to-code"]
-        A2 --> A3["Working UI Component"]
+    subgraph FlowArch ["🏗️ Architecture: Meta-Repo & Governance Scaffolding"]
+        M1["New or Multi-repo Project"] --> M2["generate-meta-repo"]
+        M2 --> M3["Manifest repos.json + Zero-dep Scripts"]
+        M2 --> M4[".code-workspace + Docker Dev Stack"]
+        M2 --> M5["Layered AI Governance<br/>(AGENTS.md + CLAUDE.md)"]
     end
 
-    subgraph PathB ["📐 Workflow B: Spec-Driven Development (SDD)"]
-        B1["Figma URL or Canvas Selection"] --> B2["figma-extractor<br/>(CLI or Figma Desktop Plugin)"]
-        B2 --> B3["Specification Contract<br/>.specs/card.json (+ .png)"]
-        B3 --> B4["Human Review & Gap Analysis"]
-        B4 --> B5["figma-node-builder"]
-        B5 --> B6["Grounded Production Component"]
+    subgraph FlowSDD ["📐 Design: Spec-Driven Development (SDD)"]
+        S1["Figma URL or Canvas Selection"] --> S2["figma-extractor<br/>(CLI or Desktop Plugin)"]
+        S2 --> S3["Specification Contract<br/>.specs/card.json (+ .png)"]
+        S3 --> S4["Human/AI Spec Review & Token Audit"]
+        S4 --> S5["figma-node-builder"]
+        S5 --> S6["Grounded Production Component"]
+    end
+
+    subgraph FlowFast ["⚡ Design: Rapid One-Shot Prototyping"]
+        F1["Figma Component URL"] --> F2["figma-to-code"]
+        F2 --> F3["Direct Production UI Code"]
     end
 ```
 
-* **Use `figma-to-code`** when you want fast execution: you provide a Figma URL, and the agent extracts and writes the component in one turn.
-* **Use `figma-extractor` + `figma-node-builder`** in formal Spec-Driven Development (SDD): the design specification is extracted to disk first (via CLI or the companion Figma Desktop plugin), reviewed/approved, and then systematically implemented into your design system without premature code edits.
+- **Architecture Scaffolding**: Use `generate-meta-repo` to scaffold clean multi-root workspaces with independent git sub-repos, automated cross-repo linking, and hierarchical agent governance.
+- **Spec-Driven Frontend Development (SDD)**: Use `figma-extractor` + `figma-node-builder` when precision is essential. The design spec is extracted to disk first, reviewed, and systematically implemented without premature or hallucinated code edits.
+- **Fast UI Prototyping**: Use `figma-to-code` for immediate, single-turn conversion of a Figma link directly into UI code.
 
 ---
 
@@ -55,15 +80,15 @@ flowchart TD
   <img src="./figma-extractor/figma-plugin/assets/cover.png" alt="Figma Node JSON Extractor" width="100%" />
 </p>
 
-To extract specifications directly inside Figma Desktop without API tokens or rate limits, use the companion [**Figma Node JSON Extractor**](./figma-extractor/figma-plugin/README.md) plugin:
+For the Design & SDD workflow, you can extract specifications directly inside Figma Desktop without API tokens or rate limits using the companion [**Figma Node JSON Extractor**](./figma-extractor/figma-plugin/README.md) plugin:
 * **Figma Community (Recommended)**: Install [**Figma Node JSON Extractor** on Figma Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) directly, or search for it under Figma Plugins.
-* **Manual Manifest Import (Local Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from your installed skill directory (`<skill-dir>/figma-plugin/manifest.json`).
+* **Manual Manifest Import (Local Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from `<skill-dir>/figma-extractor/figma-plugin/manifest.json`.
 
 ---
 
 ## Quick Install via `npx`
 
-Install any or all skills into your favorite AI coding assistant with a single interactive command:
+Install any skill or full suites into your AI coding assistant with a single interactive command:
 
 ```bash
 # Recommended (npm registry):
@@ -73,29 +98,30 @@ npx @pedroab0/skills
 npx github:pedroab0/skills
 ```
 
-The installer features a clean, interactive terminal UI:
+The installer features an interactive terminal UI:
 * **Navigate**: Use keyboard arrows (`↑` / `↓`) or vim keys (`k` / `j`) to move between options.
 * **Select**: Press `[Enter]` or press number keys (`1` - `6`) to select directly.
 * **Exit**: Press `[ESC]` or `q` at any time to cancel cleanly.
 
 ### Selection Options & Presets
 
-1. **All skills** `[Enter / 1]`: Installs `figma-to-code`, `figma-extractor`, and `figma-node-builder` (recommended).
+1. **All skills** `[Enter / 1]`: Installs `generate-meta-repo`, `figma-to-code`, `figma-extractor`, and `figma-node-builder` (recommended).
 2. **figma-extractor and figma-node-builder** `[2]`: Spec-Driven Development (SDD) Suite.
 3. **figma-to-code** `[3]`: Fast prototyping (URL ──► UI Code).
 4. **figma-extractor** `[4]`: Figma design scraper (extracts layout AST, tokens & preview images to `.specs/`).
 5. **figma-node-builder** `[5]`: Builds UI components from extracted Figma JSON specs (`.specs/*.json`).
+6. **generate-meta-repo** `[6]`: Scaffolds a manifest-based Multi-root Workspace (Meta-Repo) and AI governance.
 
-Or specify flags for fast, non-interactive setup:
+Or specify flags for non-interactive automation:
 ```bash
 # Install all skills for Claude Code globally
 npx @pedroab0/skills --agent claude --skill all
 
-# Install SDD skills for Kiro (IDE & CLI)
-npx @pedroab0/skills --agent kiro --skill sdd
+# Install architecture generator for Google Antigravity
+npx @pedroab0/skills --agent antigravity --skill generate-meta-repo
 
-# Install SDD skills for Google Antigravity
-npx @pedroab0/skills --agent antigravity --skill figma-extractor,figma-node-builder
+# Install SDD suite for Kiro (IDE & CLI)
+npx @pedroab0/skills --agent kiro --skill sdd
 
 # Install one-shot coder for Cursor (.cursor/rules)
 npx @pedroab0/skills --agent cursor --skill figma-to-code
@@ -105,70 +131,34 @@ npx @pedroab0/skills --agent cursor --skill figma-to-code
 
 ## Manual Installation Guide
 
-If you prefer to install manually, all skills follow the open Agent Skills standard (`SKILL.md` format):
+All skills follow the open Agent Skills standard (`SKILL.md` format) and can be symlinked or copied into any agent directory:
 
-### 1. Claude Code
+| Agent | Global Skills Path | Workspace Local Path |
+| :--- | :--- | :--- |
+| **Claude Code** | `~/.claude/skills/<skill>` | `.claude/skills/<skill>` |
+| **Google Antigravity** | `~/.gemini/config/skills/<skill>` | `.gemini/skills/<skill>` |
+| **OpenCode** | `~/.config/opencode/skills/<skill>` | `.opencode/skills/<skill>` |
+| **Kiro (IDE & CLI)** | `~/.kiro/skills/<skill>` | `.kiro/skills/<skill>` |
+| **Cursor** | — | `.cursor/rules/<skill>.mdc` (or use installer) |
 
-Claude Code supports skills both locally within a repository or globally across your user profile.
+### Symlink Example (All Skills)
 
-- **Global Installation (All Projects)**:
-  ```bash
-  mkdir -p ~/.claude/skills
-  ln -s /path/to/skills/figma-to-code ~/.claude/skills/figma-to-code
-  ln -s /path/to/skills/figma-extractor ~/.claude/skills/figma-extractor
-  ln -s /path/to/skills/figma-node-builder ~/.claude/skills/figma-node-builder
-  ```
-
-- **Usage & Activation**:
-  - **Automatic**: Claude Code inspects `SKILL.md` descriptions on startup and loads the appropriate skill automatically based on your prompt.
-  - **Manual Slash Command**: Run `/figma-to-code <FigmaURL>` or `/figma-extractor <FigmaURL>` directly in the chat.
-
----
-
-### 2. OpenCode
-
-OpenCode discovers skills from project or user configuration directories, maintaining full compatibility with the open `SKILL.md` standard.
-
-- **Global Installation (All Projects)**:
-  ```bash
-  mkdir -p ~/.config/opencode/skills
-  ln -s /path/to/skills/figma-to-code ~/.config/opencode/skills/figma-to-code
-  ln -s /path/to/skills/figma-extractor ~/.config/opencode/skills/figma-extractor
-  ln -s /path/to/skills/figma-node-builder ~/.config/opencode/skills/figma-node-builder
-  ```
-
----
-
-### 3. Cursor
-
-In Cursor, reference skills via `.cursor/rules/` or mention them in Composer chat:
-* To extract specs: prompt `@figma-extractor extract this frame: <url>`.
-* To implement a spec: prompt `@figma-node-builder implement .specs/card.json`.
-
----
-
-### 4. Google Antigravity / Gemini CLI
- 
-Symlink or copy the skills into your Antigravity skills directory (`~/.gemini/config/skills` for Antigravity 2.0, or legacy `~/.gemini/antigravity-cli/skills`):
 ```bash
-mkdir -p ~/.gemini/config/skills
-ln -s /path/to/skills/figma-to-code ~/.gemini/config/skills/figma-to-code
-ln -s /path/to/skills/figma-extractor ~/.gemini/config/skills/figma-extractor
-ln -s /path/to/skills/figma-node-builder ~/.gemini/config/skills/figma-node-builder
+# Example for Claude Code (replace destination with your agent's path):
+TARGET_DIR="$HOME/.claude/skills"
+mkdir -p "$TARGET_DIR"
+
+for skill in generate-meta-repo figma-to-code figma-extractor figma-node-builder; do
+  ln -s "$(pwd)/$skill" "$TARGET_DIR/$skill"
+done
 ```
 
----
+### Agent Chat Usage & Triggers
 
-### 5. Kiro
-
-Kiro discovers standard `SKILL.md` packages locally in `.kiro/skills/` or globally in `~/.kiro/skills/` (or `$KIRO_HOME/skills/`):
-```bash
-mkdir -p ~/.kiro/skills
-ln -s /path/to/skills/figma-to-code ~/.kiro/skills/figma-to-code
-ln -s /path/to/skills/figma-extractor ~/.kiro/skills/figma-extractor
-ln -s /path/to/skills/figma-node-builder ~/.kiro/skills/figma-node-builder
-```
-- **Activation**: Kiro loads matching skills automatically based on your prompt or explicitly via `/figma-extractor`, `/figma-node-builder`, and `/figma-to-code` in Kiro IDE chat or Kiro CLI.
+* **Claude Code / Kiro**: Prompt automatically (skills load based on prompt context) or use explicit slash commands: `/generate-meta-repo`, `/figma-to-code <url>`, `/figma-extractor <url>`.
+* **Cursor**: Mention rules in Composer chat: `@generate-meta-repo`, `@figma-extractor`, `@figma-node-builder`.
+* **Google Antigravity**: Automatically detected from `~/.gemini/config/skills/` or invoke via natural language.
+* **OpenCode**: Automatically loaded on matching keywords or task requirements.
 
 ---
 
@@ -177,19 +167,28 @@ ln -s /path/to/skills/figma-node-builder ~/.kiro/skills/figma-node-builder
 ```text
 skills/
 ├── README.md                 # Curated skills repository catalog (this file)
-├── figma-to-code/            # Direct one-shot Figma to UI code generator
-│   ├── SKILL.md              # One-shot agent skill definition
-│   ├── README.md             # One-shot documentation & flags
-│   └── scripts/              # Extraction scripts & test suite
-├── figma-extractor/          # SDD Step 1: Pure Figma design specification scraper
+├── AGENTS.md                 # Universal and domain-specific rules for AI agents
+├── CLAUDE.md                 # Quick commands & guidelines for Claude Code
+├── bin/                      # Multi-agent interactive CLI installer (npx @pedroab0/skills)
+├── generate-meta-repo/       # Domain: Architecture & Workspace Engineering
+│   ├── SKILL.md              # 6-Phase meta-repo scaffolding skill definition
+│   ├── README.md             # Skill overview and usage guide
+│   └── meta-repo-architecture-guide.md # Architecture reference & replication blueprint
+├── figma-extractor/          # Domain: Design & Spec-Driven Development (Step 1)
 │   ├── SKILL.md              # Pure scraper skill definition (outputs to .specs/)
 │   ├── README.md             # In-depth scraper documentation & flags
 │   ├── figma-plugin/         # Zero-API Figma Desktop plugin (AST + preview exporter)
 │   └── scripts/              # Standalone Node.js extraction scripts & tests
-└── figma-node-builder/       # SDD Step 2: Spec-driven UI component builder
-    ├── SKILL.md              # 4-Phase SDD implementation skill definition
-    ├── README.md             # In-depth builder documentation
-    └── scripts/              # Spec inspector CLI & test suite
+├── figma-node-builder/       # Domain: Design & Spec-Driven Development (Step 2)
+│   ├── SKILL.md              # 4-Phase SDD implementation skill definition
+│   ├── README.md             # In-depth builder documentation
+│   └── scripts/              # Spec inspector CLI & test suite
+├── figma-to-code/            # Domain: Rapid Prototyping (One-Shot)
+│   ├── SKILL.md              # One-shot agent skill definition
+│   ├── README.md             # One-shot documentation & flags
+│   └── scripts/              # Extraction scripts & test suite
+├── test/                     # Cross-agent installer & documentation parity test suite
+└── evals/                    # Multi-model evaluation rubrics (Haiku, Sonnet, Opus)
 ```
 
 ---
@@ -197,15 +196,15 @@ skills/
 ## Adding New Skills
 
 When adding new skills to this curation:
-1. Create a dedicated directory: `<skill-name>/`
-2. Include a `SKILL.md` with standard YAML frontmatter (`name`, `description`) and agent instructions.
-3. Provide a `README.md` with detailed skill-specific documentation and manual execution flags.
-4. Keep scripts self-contained with minimal external dependencies.
-5. Update this root `README.md` catalog to list the new skill.
+1. **Create dedicated directory**: `<skill-name>/`
+2. **Agent instructions (`SKILL.md`)**: Follow the Anthropic Agent Skills standard with YAML frontmatter (`name`, `description` starting with a 3rd-person singular present verb) and body under 500 lines.
+3. **Documentation (`README.md`)**: Provide clear documentation and manual execution flags.
+4. **Zero external dependencies**: Helper scripts in `scripts/` must strictly use Node.js built-ins (`fs`, `path`, `https`, `crypto`).
+5. **Testing & Parity**: Run `npm test` and `npm run pack:check` to ensure 100% test pass rate and package size under 100 kB.
+6. **Catalog update**: Register the new skill in `bin/cli.js` and this root `README.md`.
 
 ---
 
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-

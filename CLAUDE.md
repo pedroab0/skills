@@ -1,6 +1,6 @@
 # CLAUDE.md — Guidelines for Claude Code
 
-This file provides context and quick commands for Claude Code when working in the `@pedroab0/skills` repository.
+This file provides context and quick commands for Claude Code when working in the `@pedroab0/skills` repository (an open-source catalog of modular Agent Skills across Architecture, Design/UI, and Developer Workflows).
 For comprehensive architectural rules, standards, and security protocols, refer to [`AGENTS.md`](file:///Users/pedrobarbosa/projects/skills/AGENTS.md).
 
 ---
