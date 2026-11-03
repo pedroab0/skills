@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.0] - 2026-11-03
+
+### Added
+- **`generate-meta-repo` Skill**: New Architecture & Workspace Engineering skill that scaffolds a Manifest-based Multi-root Workspace (Meta-Repo) with `repos.json`, zero-dependency Node.js orchestration scripts (`bootstrap.mjs`, `run.mjs`, `install-cli.mjs`, `check-manifest.mjs`), `Makefile`, Docker Compose dev stack, `.code-workspace`, and layered AI governance (`AGENTS.md`, `CLAUDE.md`).
+- **Comprehensive Meta-Repo Architecture Guide**: Added deep blueprint reference `generate-meta-repo/meta-repo-architecture-guide.md` covering the 7 core workspace guidelines, execution modes, and Day-2 evolution workflows.
+- **Installer Integration (Preset 6)**: Added `generate-meta-repo` to interactive installer `bin/cli.js` (`npx @pedroab0/skills`) and non-interactive flags (`--skill generate-meta-repo`).
+- **Evaluation Rubric for Meta-Repo**: Added `evals/generate-meta-repo.json` covering greenfield polyglot scaffolding, migration of existing local clones, and incremental workspace evolution.
+- **Enforced Evaluation Rubric Linter**: Updated `test/test_skills.js` to ensure every skill in `SKILL_DIRS` has an evaluation rubric with at least 3 scenarios.
+
+### Changed
+- **General-Purpose Agent Skills Positioning**: Re-scoped repository catalog and documentation from a Figma-only presentation to an open-source suite of Agent Skills spanning multiple software engineering domains (Architecture & Workspaces, Design & Spec-Driven Development, and Community Roadmap).
+- **Categorized Catalog & Workflows**: Restructured `README.md` with domain categorization, multi-domain Mermaid workflows, and a streamlined manual installation matrix across Claude Code, Antigravity, OpenCode, Kiro, and Cursor.
+- **Layered Agent Governance (`AGENTS.md`)**: Reorganized agent guidelines into universal skill standards (zero runtime external dependencies, progressive disclosure, token budget) and domain-specific rules (Figma/SDD vs Meta-Repo/Architecture).
+- **Package Metadata**: Expanded `package.json` keywords to include `agent-skills`, `ai-skills`, `meta-repo`, and `developer-tools`.
+
+---
+
 ## [1.3.0] - 2026-10-25
 
 ### Added
