@@ -16,9 +16,9 @@ console.log('--- Running CLI & Installer Unit Tests ---');
 
 // 1. Skill Discovery & Frontmatter Parsing
 const skills = getAvailableSkills();
-assert.strictEqual(skills.length, 3, 'Should discover exactly 3 skills');
+assert.strictEqual(skills.length, 4, 'Should discover exactly 4 skills');
 const skillNames = skills.map((s) => s.name).sort();
-assert.deepStrictEqual(skillNames, ['figma-extractor', 'figma-node-builder', 'figma-to-code']);
+assert.deepStrictEqual(skillNames, ['figma-extractor', 'figma-node-builder', 'figma-to-code', 'generate-meta-repo']);
 
 assert.strictEqual(
   parseFrontmatterField("---\nname: test\ndescription: 'Simple text with ''nested'' quotes'\n---\nBody", 'description'),
@@ -97,6 +97,7 @@ try {
   assert.ok(listOutput.includes('figma-extractor'));
   assert.ok(listOutput.includes('figma-node-builder'));
   assert.ok(listOutput.includes('figma-to-code'));
+  assert.ok(listOutput.includes('generate-meta-repo'));
   console.log('  ✓ cli --list: lists all available skills');
 
   // 6. CLI non-TTY interactive selection preset 1 (All skills on Enter)
@@ -105,7 +106,12 @@ try {
   assert.ok(fs.existsSync(path.join(destDir1, 'figma-to-code')));
   assert.ok(fs.existsSync(path.join(destDir1, 'figma-extractor')));
   assert.ok(fs.existsSync(path.join(destDir1, 'figma-node-builder')));
-  console.log('  ✓ cli preset 1: [Enter] installs all skills');
+  assert.ok(fs.existsSync(path.join(destDir1, 'generate-meta-repo')));
+  assert.ok(
+    !fs.existsSync(path.join(destDir1, 'generate-meta-repo', '.specs')),
+    'Should exclude .specs/ directory inside generate-meta-repo',
+  );
+  console.log('  ✓ cli preset 1: [Enter] installs all skills (excluding .specs/)');
 
   // 7. CLI non-TTY interactive selection preset 2 (SDD Suite)
   const destDir2 = path.join(tmpDir, 'dest-2');
@@ -136,6 +142,15 @@ try {
   assert.ok(fs.existsSync(path.join(destDir5, 'figma-node-builder')));
   assert.ok(!fs.existsSync(path.join(destDir5, 'figma-to-code')));
   console.log('  ✓ cli preset 5: [5] installs figma-node-builder only');
+
+  // 10b. CLI non-TTY interactive selection preset 6 (generate-meta-repo only)
+  const destDir6 = path.join(tmpDir, 'dest-6');
+  execSync(`node ./bin/cli.js --dest "${destDir6}"`, { cwd: path.resolve(__dirname, '..'), input: '6\n', encoding: 'utf8' });
+  assert.ok(fs.existsSync(path.join(destDir6, 'generate-meta-repo', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(destDir6, 'generate-meta-repo', 'meta-repo-architecture-guide.md')));
+  assert.ok(!fs.existsSync(path.join(destDir6, 'generate-meta-repo', '.specs')));
+  assert.ok(!fs.existsSync(path.join(destDir6, 'figma-to-code')));
+  console.log('  ✓ cli preset 6: [6] installs generate-meta-repo only');
 
   // 11. CLI cancellation via 'q'
   const cancelOutput = execSync('node ./bin/cli.js', { cwd: path.resolve(__dirname, '..'), input: 'q\n', encoding: 'utf8' });

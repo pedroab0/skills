@@ -666,6 +666,7 @@ async function main() {
   const figmaExtractor = availableSkills.find((s) => s.name === 'figma-extractor');
   const figmaNodeBuilder = availableSkills.find((s) => s.name === 'figma-node-builder');
   const figmaToCode = availableSkills.find((s) => s.name === 'figma-to-code');
+  const generateMetaRepo = availableSkills.find((s) => s.name === 'generate-meta-repo');
 
   if (flagSkill) {
     const lower = flagSkill.toLowerCase();
@@ -686,7 +687,7 @@ async function main() {
     const skillOptions = [
       {
         label: 'All skills',
-        hint: '(recommended: installs figma-to-code, figma-extractor & figma-node-builder)',
+        hint: '(recommended: installs figma-to-code, figma-extractor, figma-node-builder & generate-meta-repo)',
         value: 'all',
       },
       {
@@ -709,6 +710,11 @@ async function main() {
         hint: '- Builds UI components from extracted Figma JSON specs (.specs/*.json)',
         value: 'figma-node-builder',
       },
+      {
+        label: 'generate-meta-repo',
+        hint: '- Scaffolds a manifest-based Multi-root Workspace (Meta-Repo) and AI governance',
+        value: 'generate-meta-repo',
+      },
     ];
 
     const chosenValue = await selectPrompt({
@@ -722,6 +728,7 @@ async function main() {
         else if (item.value === 'figma-to-code') skillsForChoice = [figmaToCode].filter(Boolean);
         else if (item.value === 'figma-extractor') skillsForChoice = [figmaExtractor].filter(Boolean);
         else if (item.value === 'figma-node-builder') skillsForChoice = [figmaNodeBuilder].filter(Boolean);
+        else if (item.value === 'generate-meta-repo') skillsForChoice = [generateMetaRepo].filter(Boolean);
 
         ui.confirmed(`Selected ${style.bold(skillsForChoice.length.toString())} skill(s): ${skillsForChoice.map((s) => style.cyan(s.name)).join(', ')}`);
       },
@@ -737,6 +744,8 @@ async function main() {
       selectedSkills = [figmaExtractor].filter(Boolean);
     } else if (chosenValue === 'figma-node-builder') {
       selectedSkills = [figmaNodeBuilder].filter(Boolean);
+    } else if (chosenValue === 'generate-meta-repo') {
+      selectedSkills = [generateMetaRepo].filter(Boolean);
     }
   }
 

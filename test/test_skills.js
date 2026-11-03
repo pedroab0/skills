@@ -7,7 +7,7 @@ const { getAvailableSkills, parseFrontmatterField } = require('../bin/cli.js');
 console.log('--- Running Agent Skills Best-Practices Linter & Parity Tests ---');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
-const SKILL_DIRS = ['figma-extractor', 'figma-node-builder', 'figma-to-code'];
+const SKILL_DIRS = ['figma-extractor', 'figma-node-builder', 'figma-to-code', 'generate-meta-repo'];
 const RESERVED_WORDS = ['anthropic', 'claude'];
 
 function parseFrontmatter(filePath) {
@@ -43,7 +43,7 @@ function extractHelpFlags(scriptPath) {
 }
 
 const discoveredSkills = getAvailableSkills();
-assert.strictEqual(discoveredSkills.length, 3, 'Must discover all 3 skills');
+assert.strictEqual(discoveredSkills.length, 4, 'Must discover all 4 skills');
 
 for (const skillDir of SKILL_DIRS) {
   const skillPath = path.join(ROOT_DIR, skillDir);
