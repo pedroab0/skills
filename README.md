@@ -9,11 +9,11 @@
 
 A curated collection of modular, production-ready **Agent Skills** developed for AI coding assistants (such as Claude Code, Google Antigravity, Cursor, Kiro, OpenCode, and Codex) across diverse software engineering disciplines.
 
-Each skill gives autonomous AI assistants specialized, production-grade capabilities while upholding four core architectural pillars:
-- **Token Efficiency**: Compact, high-signal instruction sets (< 500 lines) with progressive disclosure (`REFERENCE.md`) to keep agent context windows lean and fast.
-- **Zero External Dependencies**: Standalone Node.js runtime scripts that execute instantly on demand using built-in modules (`fs`, `path`, `https`, `crypto`), eliminating `node_modules` overhead and daemon fragility.
-- **Domain Intelligence**: Deterministic procedural workflows, normalized ASTs, resolved design tokens, and workspace orchestration instead of shallow prompt wrappers.
-- **Cross-Agent Portability**: Built strictly on the open **Anthropic Agent Skills standard** (`SKILL.md`), running natively across Claude Code, Cursor, Antigravity, Kiro, and OpenCode.
+Each skill gives autonomous AI assistants specialized capabilities while upholding four core pillars:
+- **Token Efficiency**: Compact instruction sets (< 500 lines) with progressive disclosure (`REFERENCE.md`) to keep agent context lean and fast.
+- **Zero Dependencies**: Standalone scripts using Node.js built-ins (`fs`, `path`, `https`, `crypto`) with zero `node_modules` overhead.
+- **Domain Intelligence**: Deterministic procedural workflows, normalized ASTs, resolved design tokens, and workspace orchestration.
+- **Cross-Agent Portability**: 100% compliant with the open **Anthropic Agent Skills standard** (`SKILL.md`) across all major coding agents.
 
 ---
 
@@ -47,24 +47,20 @@ We actively welcome ideas and contributions to expand the catalog across new eng
 
 ```mermaid
 flowchart TD
-    subgraph FlowArch ["🏗️ Architecture: Meta-Repo & Governance Scaffolding"]
-        M1["New or Multi-repo Project"] --> M2["generate-meta-repo"]
-        M2 --> M3["Manifest repos.json + Zero-dep Scripts"]
-        M2 --> M4[".code-workspace + Docker Dev Stack"]
-        M2 --> M5["Layered AI Governance<br/>(AGENTS.md + CLAUDE.md)"]
+    subgraph FlowArch ["🏗️ Architecture & Governance"]
+        M1["Multi-Repo Stacks"] --> M2["generate-meta-repo"]
+        M2 --> M3["repos.json + Docker Dev Stack + AI Rules"]
     end
 
-    subgraph FlowSDD ["📐 Design: Spec-Driven Development (SDD)"]
-        S1["Figma URL or Canvas Selection"] --> S2["figma-extractor<br/>(CLI or Desktop Plugin)"]
-        S2 --> S3["Specification Contract<br/>.specs/card.json (+ .png)"]
-        S3 --> S4["Human/AI Spec Review & Token Audit"]
-        S4 --> S5["figma-node-builder"]
-        S5 --> S6["Grounded Production Component"]
+    subgraph FlowSDD ["📐 Spec-Driven Development (SDD)"]
+        S1["Figma Design"] --> S2["figma-extractor"]
+        S2 --> S3[".specs/ Spec Contract"]
+        S3 --> S4["figma-node-builder"]
+        S4 --> S5["Production UI Code"]
     end
 
-    subgraph FlowFast ["⚡ Design: Rapid One-Shot Prototyping"]
-        F1["Figma Component URL"] --> F2["figma-to-code"]
-        F2 --> F3["Direct Production UI Code"]
+    subgraph FlowFast ["⚡ Rapid One-Shot"]
+        F1["Figma URL"] --> F2["figma-to-code"] --> F3["Direct UI Code"]
     end
 ```
 
@@ -92,7 +88,7 @@ Install any skill or full suites into your AI coding assistant with a single int
 
 ```bash
 # Recommended (npm registry):
-npx @pedroab0/skills
+npx @pedroab0/skills@latest
 
 # Or directly from GitHub:
 npx github:pedroab0/skills
@@ -105,26 +101,26 @@ The installer features an interactive terminal UI:
 
 ### Selection Options & Presets
 
-1. **All skills** `[Enter / 1]`: Installs `generate-meta-repo`, `figma-to-code`, `figma-extractor`, and `figma-node-builder` (recommended).
-2. **figma-extractor and figma-node-builder** `[2]`: Spec-Driven Development (SDD) Suite.
-3. **figma-to-code** `[3]`: Fast prototyping (URL ──► UI Code).
-4. **figma-extractor** `[4]`: Figma design scraper (extracts layout AST, tokens & preview images to `.specs/`).
-5. **figma-node-builder** `[5]`: Builds UI components from extracted Figma JSON specs (`.specs/*.json`).
-6. **generate-meta-repo** `[6]`: Scaffolds a manifest-based Multi-root Workspace (Meta-Repo) and AI governance.
+* `[Enter / 1]` **All skills**: Installs full suite (recommended)
+* `[2]` **SDD Suite**: `figma-extractor` + `figma-node-builder`
+* `[3]` **`figma-to-code`**: Fast prototyping (URL ──► UI Code)
+* `[4]` **`figma-extractor`**: Figma scraper (AST, tokens & previews to `.specs/`)
+* `[5]` **`figma-node-builder`**: Builds UI components from `.specs/*.json`
+* `[6]` **`generate-meta-repo`**: Scaffolds Meta-Repo & AI governance
 
 Or specify flags for non-interactive automation:
 ```bash
 # Install all skills for Claude Code globally
-npx @pedroab0/skills --agent claude --skill all
+npx @pedroab0/skills@latest --agent claude --skill all
 
 # Install architecture generator for Google Antigravity
-npx @pedroab0/skills --agent antigravity --skill generate-meta-repo
+npx @pedroab0/skills@latest --agent antigravity --skill generate-meta-repo
 
 # Install SDD suite for Kiro (IDE & CLI)
-npx @pedroab0/skills --agent kiro --skill sdd
+npx @pedroab0/skills@latest --agent kiro --skill sdd
 
 # Install one-shot coder for Cursor (.cursor/rules)
-npx @pedroab0/skills --agent cursor --skill figma-to-code
+npx @pedroab0/skills@latest --agent cursor --skill figma-to-code
 ```
 
 ---
@@ -153,13 +149,6 @@ for skill in generate-meta-repo figma-to-code figma-extractor figma-node-builder
 done
 ```
 
-### Agent Chat Usage & Triggers
-
-* **Claude Code / Kiro**: Prompt automatically (skills load based on prompt context) or use explicit slash commands: `/generate-meta-repo`, `/figma-to-code <url>`, `/figma-extractor <url>`.
-* **Cursor**: Mention rules in Composer chat: `@generate-meta-repo`, `@figma-extractor`, `@figma-node-builder`.
-* **Google Antigravity**: Automatically detected from `~/.gemini/config/skills/` or invoke via natural language.
-* **OpenCode**: Automatically loaded on matching keywords or task requirements.
-
 ---
 
 ## Repository Structure
@@ -169,24 +158,11 @@ skills/
 ├── README.md                 # Curated skills repository catalog (this file)
 ├── AGENTS.md                 # Universal and domain-specific rules for AI agents
 ├── CLAUDE.md                 # Quick commands & guidelines for Claude Code
-├── bin/                      # Multi-agent interactive CLI installer (npx @pedroab0/skills)
+├── bin/                      # Multi-agent interactive CLI installer (npx @pedroab0/skills@latest)
 ├── generate-meta-repo/       # Domain: Architecture & Workspace Engineering
-│   ├── SKILL.md              # 6-Phase meta-repo scaffolding skill definition
-│   ├── README.md             # Skill overview and usage guide
-│   └── meta-repo-architecture-guide.md # Architecture reference & replication blueprint
-├── figma-extractor/          # Domain: Design & Spec-Driven Development (Step 1)
-│   ├── SKILL.md              # Pure scraper skill definition (outputs to .specs/)
-│   ├── README.md             # In-depth scraper documentation & flags
-│   ├── figma-plugin/         # Zero-API Figma Desktop plugin (AST + preview exporter)
-│   └── scripts/              # Standalone Node.js extraction scripts & tests
-├── figma-node-builder/       # Domain: Design & Spec-Driven Development (Step 2)
-│   ├── SKILL.md              # 4-Phase SDD implementation skill definition
-│   ├── README.md             # In-depth builder documentation
-│   └── scripts/              # Spec inspector CLI & test suite
+├── figma-extractor/          # Domain: Design & Spec-Driven Development (Step 1: Ingest)
+├── figma-node-builder/       # Domain: Design & Spec-Driven Development (Step 2: Implement)
 ├── figma-to-code/            # Domain: Rapid Prototyping (One-Shot)
-│   ├── SKILL.md              # One-shot agent skill definition
-│   ├── README.md             # One-shot documentation & flags
-│   └── scripts/              # Extraction scripts & test suite
 ├── test/                     # Cross-agent installer & documentation parity test suite
 └── evals/                    # Multi-model evaluation rubrics (Haiku, Sonnet, Opus)
 ```

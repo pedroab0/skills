@@ -5,7 +5,7 @@
  * https://github.com/pedroab0/skills
  *
  * Install curated AI agent skills for Claude Code, Cursor, Antigravity, OpenCode, and Kiro.
- * Usage: npx @pedroab0/skills [options]
+ * Usage: npx @pedroab0/skills@latest [options]
  */
 
 const fs = require('fs');
@@ -49,7 +49,7 @@ function printBanner() {
 function printUsage() {
   console.log(`
 ${style.bold('Usage:')}
-  npx @pedroab0/skills [options]
+  npx @pedroab0/skills@latest [options]
   (or: npx github:pedroab0/skills [options])
 
 ${style.bold('Options:')}
@@ -63,11 +63,11 @@ ${style.bold('Options:')}
   --help, -h           Show this help message
 
 ${style.bold('Examples:')}
-  npx @pedroab0/skills
-  npx @pedroab0/skills --agent claude --skill all
-  npx @pedroab0/skills --agent kiro --skill sdd
-  npx @pedroab0/skills --agent antigravity --skill figma-extractor,figma-node-builder
-  npx @pedroab0/skills --dest ~/.claude/skills --skill figma-to-code
+  npx @pedroab0/skills@latest
+  npx @pedroab0/skills@latest --agent claude --skill all
+  npx @pedroab0/skills@latest --agent kiro --skill sdd
+  npx @pedroab0/skills@latest --agent antigravity --skill figma-extractor,figma-node-builder
+  npx @pedroab0/skills@latest --dest ~/.claude/skills --skill figma-to-code
 `);
 }
 
