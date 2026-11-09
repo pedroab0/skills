@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.4.1] - 2026-11-09
+
+### Fixed
+- **Figma Community Submission Compliance**: Renamed companion desktop plugin from *Figma Node JSON Extractor* to *Node JSON Extractor* across plugin manifest (`manifest.json`), UI (`ui.html`), backend (`code.js`), and all documentation to comply with Figma trademark and brand naming policies for community approvals.
+
+---
+
 ## [1.4.0] - 2026-11-03
 
 ### Added
