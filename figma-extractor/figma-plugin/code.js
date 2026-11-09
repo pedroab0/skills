@@ -1,4 +1,4 @@
-// Figma Node JSON Extractor - Figma Plugin Backend (code.js)
+// Node JSON Extractor - Figma Plugin Backend (code.js)
 // Exports compact, design-system-aware Node JSON and companion PNG preview for developer handoff.
 
 figma.showUI(__html__, { width: 440, height: 520, themeColors: true });

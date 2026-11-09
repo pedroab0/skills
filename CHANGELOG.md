@@ -66,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Windows PowerShell Support**: Added detection and parsing of UTF-16LE Windows PowerShell profile files (`$PROFILE`) and `[Environment]::SetEnvironmentVariable`.
 - **Kiro IDE & CLI Compatibility**: Added first-class installation support for Kiro via `.kiro/skills` and `$KIRO_HOME/skills`.
-- **Figma Desktop Plugin Release**: Initial release of the *Figma Node JSON Extractor* desktop plugin for zero-API exports.
+- **Figma Desktop Plugin Release**: Initial release of the *Node JSON Extractor* desktop plugin for zero-API exports.
 
 ---
 

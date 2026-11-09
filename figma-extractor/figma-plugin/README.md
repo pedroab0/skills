@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="./assets/icon.png" alt="Figma Node JSON Extractor Icon" width="256" />
+  <img src="./assets/icon.png" alt="Node JSON Extractor Icon" width="256" />
 </p>
 
-# Figma Node JSON Extractor
+# Node JSON Extractor
 
 <p align="center">
-  <a href="https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor"><img src="https://img.shields.io/badge/Figma_Community-Figma_Node_JSON_Extractor-000000?style=flat&logo=figma&logoColor=white" alt="Figma Community Plugin" /></a>
+  <a href="https://www.figma.com/community/plugin/1691244420692136789/node-json-extractor"><img src="https://img.shields.io/badge/Figma_Community-Node_JSON_Extractor-000000?style=flat&logo=figma&logoColor=white" alt="Figma Community Plugin" /></a>
   <a href="https://www.npmjs.com/package/@pedroab0/skills"><img src="https://img.shields.io/npm/v/@pedroab0/skills.svg?label=@pedroab0/skills" alt="npm package" /></a>
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
 </p>
@@ -27,9 +27,9 @@ Inspect, copy, and export compact, design-system-aware Node JSON and high-resolu
 
 ### Option A: Install from Figma Community (Recommended)
 Install directly from the Figma Community:
-👉 [**Install Figma Node JSON Extractor on Figma Community**](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor)
+👉 [**Install Node JSON Extractor on Figma Community**](https://www.figma.com/community/plugin/1691244420692136789/node-json-extractor)
 
-1. Open the [plugin page on Figma Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) or search for **Figma Node JSON Extractor** in Figma Plugins.
+1. Open the [plugin page on Figma Community](https://www.figma.com/community/plugin/1691244420692136789/node-json-extractor) or search for **Node JSON Extractor** in Figma Plugins.
 2. Click **Open in...** or **Save** to add it to your Figma account.
 
 ### Option B: Manual Installation (Local / Offline Backup)
@@ -59,7 +59,7 @@ To install the plugin directly from your local skills folder or repository:
 ## How to Extract Node JSON
 
 1. **Select any frame or component** on your canvas (e.g., Transaction Card, Navbar, Modal).
-2. Right-click the element $\rightarrow$ **Plugins** $\rightarrow$ **Figma Node JSON Extractor** (or press `⌥ ⌘ P` on macOS / `Ctrl + Alt + P` on Windows to re-run).
+2. Right-click the element $\rightarrow$ **Plugins** $\rightarrow$ **Node JSON Extractor** (or press `⌥ ⌘ P` on macOS / `Ctrl + Alt + P` on Windows to re-run).
 3. In the plugin popup, choose your export format:
    * **📋 Copy Node JSON**: Copies the clean AST specification directly to your clipboard (ready to paste into chat).
    * **💾 .json**: Downloads `<name>.json` containing layout, dimensions, tokens, and props.

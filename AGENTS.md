@@ -10,7 +10,7 @@ This repository is an open-source suite of modular, cross-agent **Agent Skills**
 - **Architecture & Workspace Engineering**:
   - **`generate-meta-repo`**: Scaffolds a Manifest-based Multi-root Workspace (Meta-Repo) with `repos.json`, zero-dependency scripts, `Makefile`, Docker Compose dev stack, `.code-workspace`, and layered AI governance (`AGENTS.md`, `CLAUDE.md`).
 - **Design, UI & Spec-Driven Development (SDD)**:
-  - **`figma-extractor`**: Specification ingestion layer. Connects to the Figma REST API, extracts a pruned AST, resolved design tokens, and normalized component instances into `./.specs/<name>.json`. Includes the official Figma Desktop companion plugin (*Figma Node JSON Extractor*) for zero-API exports.
+  - **`figma-extractor`**: Specification ingestion layer. Connects to the Figma REST API, extracts a pruned AST, resolved design tokens, and normalized component instances into `./.specs/<name>.json`. Includes the official Figma Desktop companion plugin (*Node JSON Extractor*) for zero-API exports.
   - **`figma-node-builder`**: Implementation layer. Builds UI components in actual code (React, Vue, Svelte, Tailwind, etc.) from the local spec (`.specs/*.json`), operating 100% offline without visual hallucinations.
   - **`figma-to-code`**: Direct one-shot converter. Single-turn conversion from Figma links into production UI components for rapid prototyping.
 - **Ecosystem Infrastructure & Tooling**:

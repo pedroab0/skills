@@ -1,7 +1,7 @@
 # Figma Extractor
 
 <p align="center">
-  <a href="https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor"><img src="https://img.shields.io/badge/Figma_Community-Plugin-000000?style=flat&logo=figma&logoColor=white" alt="Figma Community Plugin" /></a>
+  <a href="https://www.figma.com/community/plugin/1691244420692136789/node-json-extractor"><img src="https://img.shields.io/badge/Figma_Community-Plugin-000000?style=flat&logo=figma&logoColor=white" alt="Figma Community Plugin" /></a>
   <a href="https://www.npmjs.com/package/@pedroab0/skills"><img src="https://img.shields.io/npm/v/@pedroab0/skills.svg?label=@pedroab0/skills" alt="npm package" /></a>
   <a href="../LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
 </p>
@@ -144,15 +144,15 @@ node figma-extractor/scripts/fetch_figma.js "<FigmaURL>" --tokens --spec tokens
 
 ---
 
-## Zero-API Companion: Figma Node JSON Extractor (Figma Plugin)
+## Zero-API Companion: Node JSON Extractor (Figma Plugin)
 
 <p align="center">
-  <img src="./figma-plugin/assets/icon.png" alt="Figma Node JSON Extractor" width="200" />
+  <img src="./figma-plugin/assets/icon.png" alt="Node JSON Extractor" width="200" />
 </p>
 
 For developers who prefer exporting specifications directly from Figma Desktop without configuring API access tokens or consuming REST API quotas:
 
-* **Published Figma Plugin (Recommended)**: Install [**Figma Node JSON Extractor** on Figma Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) directly, or search for it under Figma Plugins.
+* **Published Figma Plugin (Recommended)**: Install [**Node JSON Extractor** on Figma Community](https://www.figma.com/community/plugin/1691244420692136789/node-json-extractor) directly, or search for it under Figma Plugins.
 * **Manual Local Installation (Local / Offline Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from your installed skills directory (`~` corresponds to `%USERPROFILE%` on Windows):
   * **Claude Code**: `~/.claude/skills/figma-extractor/figma-plugin/manifest.json`
   * **Cursor**: `.cursor/skills/figma-extractor/figma-plugin/manifest.json` (or `~/.cursor/skills/...`)

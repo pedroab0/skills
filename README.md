@@ -30,7 +30,7 @@ Each skill gives autonomous AI assistants specialized capabilities while upholdi
 | Skill | Focus | Description | Links |
 | :--- | :--- | :--- | :--- |
 | **[`figma-to-code`](./figma-to-code)** | **One-Shot / Fast Prototyping** | Direct, single-turn conversion of Figma designs into clean, production-ready UI components. Best for rapid prototyping and standalone components. | [Guide](./figma-to-code/README.md) · [`SKILL.md`](./figma-to-code/SKILL.md) |
-| **[`figma-extractor`](./figma-extractor)** | **SDD Step 1 (Ingest)** | Pure specification scraper (CLI / REST API) and companion Figma Desktop plugin that extract compact layout trees, design tokens, and preview images into `./.specs/`. Never touches application code. | [Guide](./figma-extractor/README.md) · [Plugin](./figma-extractor/figma-plugin/README.md) · [Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) · [`SKILL.md`](./figma-extractor/SKILL.md) |
+| **[`figma-extractor`](./figma-extractor)** | **SDD Step 1 (Ingest)** | Pure specification scraper (CLI / REST API) and companion Figma Desktop plugin that extract compact layout trees, design tokens, and preview images into `./.specs/`. Never touches application code. | [Guide](./figma-extractor/README.md) · [Plugin](./figma-extractor/figma-plugin/README.md) · [Community](https://www.figma.com/community/plugin/1691244420692136789/node-json-extractor) · [`SKILL.md`](./figma-extractor/SKILL.md) |
 | **[`figma-node-builder`](./figma-node-builder)** | **SDD Step 2 (Implement)** | Grounded UI builder that reads extracted Figma Node specifications (`.specs/*.json`) and companion preview images (`*.png`) to build components without CSS hallucinations. | [Guide](./figma-node-builder/README.md) · [`SKILL.md`](./figma-node-builder/SKILL.md) |
 
 ### 3. Community Ecosystem & Roadmap
@@ -73,11 +73,11 @@ flowchart TD
 ### Zero-API Companion: Figma Desktop Plugin
 
 <p align="center">
-  <img src="./figma-extractor/figma-plugin/assets/cover.png" alt="Figma Node JSON Extractor" width="100%" />
+  <img src="./figma-extractor/figma-plugin/assets/cover.png" alt="Node JSON Extractor" width="100%" />
 </p>
 
-For the Design & SDD workflow, you can extract specifications directly inside Figma Desktop without API tokens or rate limits using the companion [**Figma Node JSON Extractor**](./figma-extractor/figma-plugin/README.md) plugin:
-* **Figma Community (Recommended)**: Install [**Figma Node JSON Extractor** on Figma Community](https://www.figma.com/community/plugin/1691244420692136789/figma-node-json-extractor) directly, or search for it under Figma Plugins.
+For the Design & SDD workflow, you can extract specifications directly inside Figma Desktop without API tokens or rate limits using the companion [**Node JSON Extractor**](./figma-extractor/figma-plugin/README.md) plugin:
+* **Figma Community (Recommended)**: Install [**Node JSON Extractor** on Figma Community](https://www.figma.com/community/plugin/1691244420692136789/node-json-extractor) directly, or search for it under Figma Plugins.
 * **Manual Manifest Import (Local Backup)**: In Figma Desktop, go to **Plugins** $\rightarrow$ **Development** $\rightarrow$ **Import plugin from manifest...** and select `manifest.json` from `<skill-dir>/figma-extractor/figma-plugin/manifest.json`.
 
 ---
