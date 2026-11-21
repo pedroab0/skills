@@ -76,11 +76,14 @@ The **Meta-Repo** is the pragmatic middle ground between monolithic monorepos an
 | `make run` | Starts infra + docker services + host frontends concurrently |
 | `make status` | Displays git branch, uncommitted diffs, and sync state across all repos |
 | `make pull` | Fetches and rebases all repositories on their default branches |
-| `make check` | Validates `repos.json` integrity and `.gitignore` coverage |
+| `make check-manifest` | Validates `repos.json` integrity, nested-repo prevention, and `.gitignore` coverage |
 
 ---
 
 ## Deep Dive Documentation
 
-* [`SKILL.md`](SKILL.md) — The 6-Phase AI Agent Execution Procedure.
-* [`meta-repo-architecture-guide.md`](meta-repo-architecture-guide.md) — Complete 1,200+ line technical architecture blueprint.
+* [`SKILL.md`](SKILL.md) — The 6-Phase AI Agent Execution Procedure and progressive-disclosure reference map.
+* [`blueprint.md`](blueprint.md) — Core implementation blueprint (`repos.json`, `.gitignore`, Companion IaC layout, `Makefile`, `docker-compose.dev.yml`, and `copy_templates.js` CLI flags).
+* [`entry-files.md`](entry-files.md) — Canonical templates and guidelines for `README.md`, layered `AGENTS.md`, `CLAUDE.md`, and `*.code-workspace`.
+* [`reference.md`](reference.md) — On-demand architectural reference (adoption criteria, Expand/Contract, optional advanced commands, Windows/WSL2, and alternative tools).
+* `scripts/copy_templates.js` & `templates/` — Zero-dependency copier and ready-to-copy Node.js orchestration scripts (`scripts/*.mjs`) and CI workflow (`meta-repo.yml`).

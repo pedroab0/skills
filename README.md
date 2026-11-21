@@ -23,7 +23,7 @@ Each skill gives autonomous AI assistants specialized capabilities while upholdi
 
 | Skill | Focus | Description | Links |
 | :--- | :--- | :--- | :--- |
-| **[`generate-meta-repo`](./generate-meta-repo)** | **Architecture & Governance** | Scaffolds a Manifest-based Multi-root Workspace (Meta-Repo) with `repos.json`, zero-dependency orchestration scripts, `Makefile`, Docker Compose dev stack, `.code-workspace`, and layered AI governance (`AGENTS.md`, `CLAUDE.md`). | [Guide](./generate-meta-repo/README.md) · [Blueprint](./generate-meta-repo/meta-repo-architecture-guide.md) · [`SKILL.md`](./generate-meta-repo/SKILL.md) |
+| **[`generate-meta-repo`](./generate-meta-repo)** | **Architecture & Governance** | Scaffolds a Manifest-based Multi-root Workspace (Meta-Repo) with `repos.json`, zero-dependency orchestration scripts, `Makefile`, Docker Compose dev stack, `.code-workspace`, and layered AI governance (`AGENTS.md`, `CLAUDE.md`). | [Guide](./generate-meta-repo/README.md) · [Blueprint](./generate-meta-repo/blueprint.md) · [`SKILL.md`](./generate-meta-repo/SKILL.md) |
 
 ### 2. Design, UI & Spec-Driven Development (SDD)
 
