@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.6.1] - 2026-11-21
+
+### Changed
+- **Progressive Disclosure & Modular Blueprint (`generate-meta-repo`)**: Split the monolithic 68.6 kB `meta-repo-architecture-guide.md` into three phase-scoped 1-level references (`blueprint.md`, `entry-files.md`, and on-demand `reference.md`), trimmed `SKILL.md` from 12.2 kB to 8.3 kB with explicit routing and `## Resolving <skill-dir>` (including Cursor `.cursor/skills/generate-meta-repo`), and extracted the 4 zero-dependency Node.js scripts and CI workflow into `templates/` so agents copy them verbatim instead of transcribing them from context.
+- **Cross-Platform Template Copier (`generate-meta-repo/scripts/copy_templates.js`)**: Added a zero-dependency Node.js helper (`--force`, `--no-ci`, `--dry-run`, `--help`) that copies `templates/scripts/*.mjs` and `templates/meta-repo.yml` identically on macOS, Linux, and Windows while skipping existing files by default to protect customized scripts in Evolution Mode.
+- **Unit Tests, Parity Linter & Evals**: Added `generate-meta-repo/scripts/test_copy_templates.js` (6 tests wired into `npm test`), added `copy_templates.js` CLI flag parity checks in `test/test_skills.js`, expanded `test/test_cli.js` preset 7 assertions, and updated `evals/generate-meta-repo.json` (adding `gmr-04-companion-iac-parent-folder`).
+
+### Fixed
+- **Manifest Nested-Repo & Companion Validation (`templates/scripts/check-manifest.mjs`)**: Added mechanical validation rejecting nested Git repository paths, invalid non-relative paths, and dangling `companion`/`companionOf` references.
+- **Template & Documentation Polish**: Made `templates/scripts/run.mjs` derive its usage example dynamically from `repos.json`, prevented leading blank lines when `templates/scripts/install-cli.mjs` creates a new shell rc file, added explicit stack-adaptation guardrails to `entry-files.md` (`typescript.tsdk`, formatters, extensions), and fixed `make check` → `make check-manifest` in `generate-meta-repo/README.md`.
+
+---
+
 ## [1.6.0] - 2026-11-20
 
 ### Added
