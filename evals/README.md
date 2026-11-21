@@ -16,6 +16,7 @@ To run an evaluation:
 ## Evaluation Files
 
 - `figma-extractor.json`: Ingest boundaries, quota preservation, and proactive spec reuse.
+- `figma-to-spec.json`: Offline JSON and URL ingestion, codebase-aware gap analysis vs standalone Markdown specs, cross-skill disambiguation, proactive cache reuse, and Zero-Hammer rate-limit boundaries.
 - `figma-node-builder.json`: Component reuse (anti-div soup), icon fallback protocol, and validation feedback loops.
-- `figma-to-code.json`: Disambiguation from extractor, codebase discovery, and image placeholder protocol.
+- `figma-to-code.json`: Disambiguation from `figma-to-spec` / `figma-extractor`, codebase discovery, and image placeholder protocol.
 - `generate-meta-repo.json`: Greenfield polyglot meta-repo scaffolding, existing local clone migration, and incremental Day-2 workspace evolution.

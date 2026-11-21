@@ -1,0 +1,77 @@
+[
+  {
+    "id": "fts-01-local-json-codebase-aware",
+    "skills": ["figma-to-spec"],
+    "query": "Generate a Markdown UI handoff and implementation spec from .specs/checkout.json",
+    "context": "Host workspace is a React + Tailwind project with @/components/ui/button.tsx and lucide-react installed. .specs/checkout.json exists with Button instances, semantic tokens, an icon/arrow-right vector, and a MissingBadge component not in the repo.",
+    "expected_behavior": [
+      "Runs offline with 0 Figma API calls (does not invoke fetch_figma.js)",
+      "Runs analyze_spec.js on .specs/checkout.json rather than reading huge raw JSON directly",
+      "Discovers the host project stack, existing UI primitives, theme tokens, and icon packages",
+      "Writes .specs/checkout-ui.spec.md containing Overview, Functional & Content Breakdown, Layout Tree, Component Inventory, Design Tokens & Assets, and Codebase Mapping & Implementation Gaps",
+      "Maps Button to @/components/ui/button and arrow-right to lucide-react while flagging MissingBadge as a gap",
+      "Strictly avoids creating or modifying any application source code (.tsx, .css, etc.)"
+    ]
+  },
+  {
+    "id": "fts-02-figma-url-ingest-and-spec",
+    "skills": ["figma-to-spec"],
+    "query": "Summarize this Figma design into a Markdown spec so we can review layout, copy, and tokens before building: https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=4023-474",
+    "expected_behavior": [
+      "Runs fetch_figma.js once with --spec <name> without passing -i (Zero-Hammer Protocol)",
+      "Does NOT invoke browser automation tools (Playwright, Puppeteer, Chrome DevTools) on the Figma URL",
+      "Runs analyze_spec.js on the saved .specs/<name>.json",
+      "Writes a structured .specs/<name>-ui.spec.md file (or .specs/ui.spec.md if unnamed) with layout hierarchy, copy inventory, component props, and design tokens",
+      "Strictly avoids creating or modifying application source code"
+    ]
+  },
+  {
+    "id": "fts-03-standalone-non-codebase-mode",
+    "skills": ["figma-to-spec"],
+    "query": "Read .specs/onboarding.json and write a design and functional summary",
+    "context": "Workspace contains only .specs/onboarding.json and has no package.json or frontend source directories.",
+    "expected_behavior": [
+      "Detects that the workspace is standalone (no host application codebase) without erroring or fabricating codebase paths",
+      "Runs analyze_spec.js on .specs/onboarding.json offline",
+      "Writes a clean standalone .specs/onboarding-ui.spec.md covering Overview, Functional & Content Breakdown, Layout Tree, Component Inventory, and Design Tokens & Assets",
+      "Omits fake Codebase Mapping paths and strictly avoids creating application code"
+    ]
+  },
+  {
+    "id": "fts-04-rate-limit-zero-hammer-boundary",
+    "skills": ["figma-to-spec"],
+    "query": "Write a Markdown handoff spec from https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=99-100",
+    "context": "fetch_figma.js returns FIGMA_RATE_LIMIT_EXCEEDED or FIGMA_CIRCUIT_BREAKER_ACTIVE on stderr.",
+    "expected_behavior": [
+      "Stops immediately after the single API error and never retries in a loop",
+      "Does NOT attempt browser scraping or Playwright/DevTools workarounds",
+      "Reports the rate-limit cooldown clearly to the user",
+      "Suggests exporting the frame offline via the companion Node JSON Extractor plugin into .specs/<name>.json and re-running figma-to-spec offline"
+    ]
+  },
+  {
+    "id": "fts-05-cross-skill-disambiguation",
+    "skills": ["figma-to-spec", "figma-extractor", "figma-node-builder", "figma-to-code"],
+    "query": "Read this Figma screen and write a Markdown handoff spec with layout hierarchy, copy inventory, and missing components in our repo before anyone starts coding: https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=501-20",
+    "context": "All four Figma skills (figma-extractor, figma-to-spec, figma-node-builder, figma-to-code) are installed in the agent environment.",
+    "expected_behavior": [
+      "Correctly selects figma-to-spec rather than figma-to-code or figma-node-builder",
+      "Does not stop at raw JSON extraction like figma-extractor alone; produces the full Markdown specification (.specs/<name>-ui.spec.md)",
+      "Runs fetch_figma.js once with --spec <name> (without -i) and analyzes the spec via analyze_spec.js",
+      "Performs host codebase discovery to document reuse mapping and implementation gaps inside the Markdown spec",
+      "Strictly avoids creating or modifying application source code (.tsx, .vue, .css, etc.)"
+    ]
+  },
+  {
+    "id": "fts-06-proactive-url-cache-reuse",
+    "skills": ["figma-to-spec"],
+    "query": "Update our Markdown spec .specs/header-ui.spec.md for https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App?node-id=10-20",
+    "context": "File .specs/header.json already exists in the workspace from a previous extraction, and the user did NOT ask to force-refresh from Figma.",
+    "expected_behavior": [
+      "Reuses the existing local .specs/header.json (either directly via analyze_spec.js or via fetch_figma.js --spec header without --force) consuming 0 Figma API calls",
+      "Does NOT pass --force or -f to re-fetch unnecessarily",
+      "Runs analyze_spec.js on .specs/header.json and writes/updates .specs/header-ui.spec.md",
+      "Strictly avoids creating or modifying application source code"
+    ]
+  }
+]

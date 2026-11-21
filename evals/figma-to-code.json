@@ -14,12 +14,12 @@
   },
   {
     "id": "ftc-02-skill-disambiguation",
-    "skills": ["figma-to-code", "figma-extractor"],
+    "skills": ["figma-to-code", "figma-to-spec", "figma-extractor"],
     "query": "Can you inspect this Figma file and document its design tokens and component architecture for our planning doc? https://www.figma.com/design/1KP9pVQ1ptZzHa3Gcpr6ta/App",
     "expected_behavior": [
       "Correctly distinguishes planning/specification intent from immediate code generation",
-      "Does NOT activate figma-to-code (or warns and recommends figma-extractor)",
-      "Uses figma-extractor to generate specification artifacts without modifying application code"
+      "Does NOT activate figma-to-code (or warns and recommends figma-to-spec / figma-extractor)",
+      "Uses figma-to-spec (or figma-extractor for raw JSON only) to generate specification artifacts without modifying application code"
     ]
   },
   {
