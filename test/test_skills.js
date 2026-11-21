@@ -182,5 +182,15 @@ for (const flag of toSpecFetchHelpFlags) {
   );
 }
 
+// 7e. generate-meta-repo copy_templates.js
+const metaRepoBlueprintContent = fs.readFileSync(path.join(ROOT_DIR, 'generate-meta-repo', 'blueprint.md'), 'utf8');
+const copyTemplatesHelpFlags = extractHelpFlags(path.join(ROOT_DIR, 'generate-meta-repo', 'scripts', 'copy_templates.js'));
+for (const flag of copyTemplatesHelpFlags) {
+  assert.ok(
+    metaRepoBlueprintContent.includes(flag),
+    `Flag "${flag}" from generate-meta-repo/scripts/copy_templates.js --help must be documented in generate-meta-repo/blueprint.md`,
+  );
+}
+
 console.log('  ✓ CLI flags parity: 100% of executable flags are documented across reference and skill files.');
 console.log('\nResults: All agent skills conform to Anthropic Agent Skills best practices.\n');

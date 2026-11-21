@@ -214,7 +214,16 @@ try {
   const destDir7 = path.join(tmpDir, 'dest-7');
   execSync(`node ./bin/cli.js --dest "${destDir7}"`, { cwd: path.resolve(__dirname, '..'), input: '7\n', encoding: 'utf8' });
   assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'SKILL.md')));
-  assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'meta-repo-architecture-guide.md')));
+  assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'blueprint.md')));
+  assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'entry-files.md')));
+  assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'reference.md')));
+  assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'scripts', 'copy_templates.js')));
+  assert.ok(!fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'scripts', 'test_copy_templates.js')));
+  assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'templates', 'scripts', 'bootstrap.mjs')));
+  assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'templates', 'scripts', 'run.mjs')));
+  assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'templates', 'scripts', 'install-cli.mjs')));
+  assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'templates', 'scripts', 'check-manifest.mjs')));
+  assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'templates', 'meta-repo.yml')));
   assert.ok(!fs.existsSync(path.join(destDir7, 'generate-meta-repo', '.specs')));
   assert.ok(!fs.existsSync(path.join(destDir7, 'figma-to-code')));
   console.log('  ✓ cli preset 7: [7] installs generate-meta-repo only');
