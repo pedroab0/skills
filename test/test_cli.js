@@ -35,15 +35,30 @@ assert.strictEqual(
 console.log('  ✓ getAvailableSkills & parseFrontmatterField: discovers skills and robustly parses frontmatter');
 
 // 2. Agent Configs
+const prevClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
 const prevCodexHome = process.env.CODEX_HOME;
+delete process.env.CLAUDE_CONFIG_DIR;
 delete process.env.CODEX_HOME;
 let configs;
+let tildeClaudeConfigs;
 try {
   configs = getAgentConfigs('/mock/project');
+  process.env.CLAUDE_CONFIG_DIR = '~/.claude-custom';
+  tildeClaudeConfigs = getAgentConfigs('/mock/project');
 } finally {
+  if (prevClaudeConfigDir !== undefined) process.env.CLAUDE_CONFIG_DIR = prevClaudeConfigDir;
+  else delete process.env.CLAUDE_CONFIG_DIR;
   if (prevCodexHome !== undefined) process.env.CODEX_HOME = prevCodexHome;
 }
 assert.ok(configs.claude, 'claude config exists');
+assert.strictEqual(configs.claude.name, 'Claude Code');
+assert.ok(configs.claude.globalPath.endsWith(path.join('.claude', 'skills')));
+assert.ok(configs.claude.localPath.endsWith(path.join('.claude', 'skills')));
+assert.strictEqual(
+  tildeClaudeConfigs.claude.globalPath,
+  path.join(os.homedir(), '.claude-custom', 'skills'),
+  'CLAUDE_CONFIG_DIR should expand leading ~',
+);
 assert.ok(configs.antigravity, 'antigravity config exists');
 assert.ok(configs.antigravity.globalPath.includes(path.join('.gemini', 'config', 'skills')));
 assert.ok(configs.cursor, 'cursor config exists');
@@ -270,7 +285,45 @@ try {
   assert.ok(fs.existsSync(path.join(codexCustomHome, 'skills', 'figma-to-code', 'SKILL.md')));
   console.log('  ✓ OpenAI Codex: installs SDD suite (3 skills) into .agents/skills (local) and $CODEX_HOME/skills (global)');
 
-  // 15. package.json bin collision guard (must not shadow `npx skills`)
+  // 15. Claude Code support (--agent claude / claude-code + CLAUDE_CONFIG_DIR)
+  const claudeProjectDir = path.join(tmpDir, 'claude-project');
+  const claudeCustomHome = path.join(tmpDir, 'custom-claude-home');
+  fs.mkdirSync(claudeProjectDir, { recursive: true });
+
+  // Local workspace install via --agent claude --skill sdd --local
+  execSync(`node "${path.resolve(__dirname, '..', 'bin', 'cli.js')}" --agent claude --skill sdd --local`, {
+    cwd: claudeProjectDir,
+    encoding: 'utf8',
+  });
+  assert.ok(fs.existsSync(path.join(claudeProjectDir, '.claude', 'skills', 'figma-extractor', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(claudeProjectDir, '.claude', 'skills', 'figma-to-spec', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(claudeProjectDir, '.claude', 'skills', 'figma-node-builder', 'SKILL.md')));
+  assert.ok(!fs.existsSync(path.join(claudeProjectDir, '.claude', 'skills', 'figma-to-code')));
+
+  // Verify local .claude detection even when CLAUDE_CONFIG_DIR points to a non-existent dir
+  const prevClaudeEnv = process.env.CLAUDE_CONFIG_DIR;
+  try {
+    process.env.CLAUDE_CONFIG_DIR = path.join(tmpDir, 'non-existent-claude-home');
+    assert.strictEqual(
+      getAgentConfigs(claudeProjectDir).claude.isDetected,
+      true,
+      'claude should be detected when local .claude directory exists',
+    );
+  } finally {
+    if (prevClaudeEnv !== undefined) process.env.CLAUDE_CONFIG_DIR = prevClaudeEnv;
+    else delete process.env.CLAUDE_CONFIG_DIR;
+  }
+
+  // Global install honoring CLAUDE_CONFIG_DIR via --agent claude-code --skill figma-to-code --global
+  execSync(`node "${path.resolve(__dirname, '..', 'bin', 'cli.js')}" --agent claude-code --skill figma-to-code --global`, {
+    cwd: claudeProjectDir,
+    env: { ...process.env, CLAUDE_CONFIG_DIR: claudeCustomHome },
+    encoding: 'utf8',
+  });
+  assert.ok(fs.existsSync(path.join(claudeCustomHome, 'skills', 'figma-to-code', 'SKILL.md')));
+  console.log('  ✓ Claude Code: installs SDD suite (3 skills) into .claude/skills (local) and $CLAUDE_CONFIG_DIR/skills (global)');
+
+  // 16. package.json bin collision guard (must not shadow `npx skills`)
   const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf8'));
   assert.strictEqual(pkg.bin.skills, undefined, 'package.json bin must not declare "skills" (collides with npx skills)');
   assert.deepStrictEqual(
@@ -283,4 +336,4 @@ try {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-console.log('\nResults: 17/17 CLI tests passed.\n');
+console.log('\nResults: 18/18 CLI tests passed.\n');

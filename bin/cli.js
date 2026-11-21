@@ -138,6 +138,9 @@ function getAvailableSkills() {
 
 function getAgentConfigs(cwd) {
   const home = os.homedir();
+  const claudeHome = process.env.CLAUDE_CONFIG_DIR
+    ? process.env.CLAUDE_CONFIG_DIR.replace(/^~(?=$|[\\/])/, home)
+    : path.join(home, '.claude');
   const kiroHome = process.env.KIRO_HOME
     ? process.env.KIRO_HOME.replace(/^~(?=$|[\\/])/, home)
     : path.join(home, '.kiro');
@@ -149,9 +152,9 @@ function getAgentConfigs(cwd) {
   return {
     claude: {
       name: 'Claude Code',
-      globalPath: path.join(home, '.claude', 'skills'),
+      globalPath: path.join(claudeHome, 'skills'),
       localPath: path.join(cwd, '.claude', 'skills'),
-      isDetected: fs.existsSync(path.join(home, '.claude')),
+      isDetected: fs.existsSync(claudeHome) || fs.existsSync(path.join(cwd, '.claude')),
     },
     antigravity: {
       name: 'Google Antigravity',
@@ -786,11 +789,13 @@ async function main() {
     });
   } else if (flagAgent) {
     const normalizedAgent =
-      flagAgent === 'kiro-ide' || flagAgent === 'kiro-cli'
-        ? 'kiro'
-        : flagAgent === 'codex-cli'
-          ? 'codex'
-          : flagAgent;
+      flagAgent === 'claude-code'
+        ? 'claude'
+        : flagAgent === 'kiro-ide' || flagAgent === 'kiro-cli'
+          ? 'kiro'
+          : flagAgent === 'codex-cli'
+            ? 'codex'
+            : flagAgent;
     const resolveScopeIsGlobal = (agentKey) => (flagScope ? flagScope === 'global' : agentKey !== 'cursor');
     if (normalizedAgent === 'all') {
       for (const [key, cfg] of Object.entries(agentConfigs)) {

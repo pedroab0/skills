@@ -140,7 +140,7 @@ All skills follow the open Agent Skills standard (`SKILL.md` format) and can be 
 
 | Agent | Global Skills Path | Workspace Local Path |
 | :--- | :--- | :--- |
-| **Claude Code** | `~/.claude/skills/<skill>` | `.claude/skills/<skill>` |
+| **Claude Code** | `$CLAUDE_CONFIG_DIR/skills/<skill>` (default `~/.claude/skills/<skill>`) | `.claude/skills/<skill>` |
 | **Google Antigravity** | `~/.gemini/config/skills/<skill>` | `.gemini/skills/<skill>` |
 | **OpenCode** | `~/.config/opencode/skills/<skill>` | `.opencode/skills/<skill>` |
 | **Kiro (IDE & CLI)** | `~/.kiro/skills/<skill>` | `.kiro/skills/<skill>` |
