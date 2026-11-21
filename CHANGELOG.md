@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.5.0] - 2026-11-20
+
+### Added
+- **`figma-to-spec` Skill**: New Spec-Driven Development (SDD) skill that turns a Figma URL or an extracted `.specs/<name>.json` AST into a structured Markdown UI handoff and implementation specification (`.specs/<name>-ui.spec.md`, fallback `.specs/ui.spec.md`) covering layout hierarchy, copy inventory, component instances, design tokens, assets, and optional host codebase mapping with gap analysis — without writing application code.
+- **Zero-Dependency Offline Spec Analyzer (`figma-to-spec/scripts/analyze_spec.js`)**: Deterministic Node.js analyzer supporting `--markdown`, `--json`, `--output`, `--max-depth`, and `--no-tree` flags, UTF-8/UTF-16LE BOM decoding, shorthand `.specs/` path resolution, and companion `.png` detection, backed by `test_analyze_spec.js`.
+- **Installer & SDD Suite Integration**: Added `figma-to-spec` to the interactive CLI (`bin/cli.js`) as Preset 5 (`--skill figma-to-spec`) and expanded the SDD Suite (`--skill sdd`, Preset 2) to install `figma-extractor`, `figma-to-spec`, and `figma-node-builder` together.
+- **Evaluation Rubrics for `figma-to-spec`**: Added `evals/figma-to-spec.json` and updated `evals/figma-to-code.json` and `evals/README.md` to test spec generation and trigger disambiguation across Figma skills.
+- **Companion IaC / Deploy Repositories Pattern (`generate-meta-repo`)**: Added Section 4.6 (*Parent Grouping Folder Pattern*) in `generate-meta-repo/meta-repo-architecture-guide.md` and integrated it into `generate-meta-repo/SKILL.md` for pairing sibling `*-iac` / `*-deploy` / `*-infra` repos inside neutral parent folders with `bootstrap-iac` and `.code-workspace` `git.autoRepositoryDetection: "subFolders"`.
+
+### Changed
+- **Figma Skill Disambiguation & Docs**: Updated `README.md`, `AGENTS.md`, `figma-extractor/SKILL.md`, `figma-node-builder/SKILL.md`, and `figma-to-code/SKILL.md` to clearly distinguish raw JSON extraction (`figma-extractor`), Markdown UI spec generation (`figma-to-spec`), offline UI implementation (`figma-node-builder`), and one-shot code generation (`figma-to-code`).
+- **Expanded `generate-meta-repo` Workflow & Guardrails**: Added explicit Node.js `>= 18` requirement, tighter Phase 1–6 operational steps, zero-drift validation against `repos.json`, and an Architectural Guardrails summary in `generate-meta-repo/SKILL.md`.
+- **Updated npm Tarball Size Budget**: Adjusted documented lean npm package ceiling from `< 100 kB` to `< 150 kB` in `AGENTS.md` and `CLAUDE.md` to accommodate the expanded 5-skill suite.
+
+### Fixed
+- **CLI Binary Collision (`npx skills`)**: Renamed the `package.json` `bin` entry from `skills` to `pedroab0-skills` (with unit test coverage in `test/test_cli.js`) to avoid shadowing the global `npx skills` CLI.
+
+---
+
 ## [1.4.1] - 2026-11-09
 
 ### Fixed
