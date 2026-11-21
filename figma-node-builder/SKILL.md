@@ -44,7 +44,7 @@ Use `--json` instead of `--markdown` for a structured summary (or `--help` / `-h
 - **Design tokens**: map each `token` (`colors/brand/primary`, `spacing/md`, `radii/lg`) to the project CSS variables or Tailwind classes.
 - **Gaps**: list sub-components and tokens that do not exist yet and must be created.
 
-Read specific parts of the raw spec only when the inspector summary is not enough.
+Read specific parts of the raw spec only when the inspector summary is not enough. If a companion Markdown spec (`.specs/<name>-ui.spec.md` or `.specs/ui.spec.md` from `figma-to-spec`) also exists, read it for functional notes, copy context, and previously identified codebase gaps.
 
 ### Phase 3: Build the component
 

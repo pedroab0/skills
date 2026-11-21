@@ -1,6 +1,6 @@
 ---
 name: figma-extractor
-description: 'Extracts Figma frames and components into compact JSON spec files (.specs/*.json) with resolved design tokens, normalized component instance props, and optional preview images, using the Figma REST API. Use when the user shares a figma.com link and wants to inspect, extract, document, or plan a design before implementation, or asks to sync Figma variables and design tokens. Produces specification artifacts only and never edits application code. For immediate one-shot code generation from a Figma link, use figma-to-code instead.'
+description: 'Extracts Figma frames and components into compact JSON spec files (.specs/*.json) with resolved design tokens, normalized component instance props, and optional preview images, using the Figma REST API. Use when the user shares a figma.com link and wants to extract raw JSON node specs or sync Figma variables and design tokens before planning or implementation. Produces JSON/PNG specification artifacts only and never edits application code. For generating a structured Markdown handoff or implementation spec (.specs/*-ui.spec.md), use figma-to-spec; for immediate one-shot code generation from a Figma link, use figma-to-code.'
 ---
 
 # Figma Extractor (SDD Spec Ingest)
@@ -39,7 +39,7 @@ If `.specs/<name>.json` already exists, the script reuses it with 0 API calls. P
 - Success: stdout shows `✔ Saved Figma specification` or `✔ Reusing local Figma specification`.
 - Failure: stderr contains a JSON error payload. Follow [Errors](#errors). Do not retry.
 
-**3. Hand off**: report the spec path and size, the root frame, the main component instances, and the design tokens found. Implementation is handled separately by the developer or by the `figma-node-builder` skill.
+**3. Hand off**: report the spec path and size, the root frame, the main component instances, and the design tokens found. Further documentation/gap analysis is handled by `figma-to-spec`, and implementation is handled separately by the developer or by the `figma-node-builder` skill.
 
 ## Common variants
 

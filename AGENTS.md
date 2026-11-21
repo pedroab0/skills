@@ -11,6 +11,7 @@ This repository is an open-source suite of modular, cross-agent **Agent Skills**
   - **`generate-meta-repo`**: Scaffolds a Manifest-based Multi-root Workspace (Meta-Repo) with `repos.json`, zero-dependency scripts, `Makefile`, Docker Compose dev stack, `.code-workspace`, and layered AI governance (`AGENTS.md`, `CLAUDE.md`).
 - **Design, UI & Spec-Driven Development (SDD)**:
   - **`figma-extractor`**: Specification ingestion layer. Connects to the Figma REST API, extracts a pruned AST, resolved design tokens, and normalized component instances into `./.specs/<name>.json`. Includes the official Figma Desktop companion plugin (*Node JSON Extractor*) for zero-API exports.
+  - **`figma-to-spec`**: Specification documentation & handoff layer. Accepts a Figma URL or local `.specs/<name>.json` and outputs a structured Markdown UI handoff & functional specification (`.specs/<name>-ui.spec.md`, fallback `.specs/ui.spec.md`) with layout hierarchy, copy inventory, component instances, design tokens, assets, and optional host codebase mapping with gap analysis. Never writes application code.
   - **`figma-node-builder`**: Implementation layer. Builds UI components in actual code (React, Vue, Svelte, Tailwind, etc.) from the local spec (`.specs/*.json`), operating 100% offline without visual hallucinations.
   - **`figma-to-code`**: Direct one-shot converter. Single-turn conversion from Figma links into production UI components for rapid prototyping.
 - **Ecosystem Infrastructure & Tooling**:
@@ -160,6 +161,7 @@ Before proposing or committing any changes:
    - `figma-extractor/scripts/test_fetch_figma.js` (parsing, circuit breaker, AST, and plugin tests).
    - `figma-to-code/scripts/test_fetch_figma.js` (direct extraction tests).
    - `figma-node-builder/scripts/test_inspect_spec.js` (spec inspector tests).
+   - `figma-to-spec/scripts/test_analyze_spec.js` (spec analyzer & Markdown spec generator tests).
    - `test/test_cli.js` (cross-agent installer, frontmatter parser, and Cursor rules tests).
    - `test/test_skills.js` (continuous best practices linter and 100% CLI flag parity check).
 2. **Validate npm package integrity**:

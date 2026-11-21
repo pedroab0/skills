@@ -31,7 +31,8 @@ Each skill gives autonomous AI assistants specialized capabilities while upholdi
 | :--- | :--- | :--- | :--- |
 | **[`figma-to-code`](./figma-to-code)** | **One-Shot / Fast Prototyping** | Direct, single-turn conversion of Figma designs into clean, production-ready UI components. Best for rapid prototyping and standalone components. | [Guide](./figma-to-code/README.md) · [`SKILL.md`](./figma-to-code/SKILL.md) |
 | **[`figma-extractor`](./figma-extractor)** | **SDD Step 1 (Ingest)** | Pure specification scraper (CLI / REST API) and companion Figma Desktop plugin that extract compact layout trees, design tokens, and preview images into `./.specs/`. Never touches application code. | [Guide](./figma-extractor/README.md) · [Plugin](./figma-extractor/figma-plugin/README.md) · [Community](https://www.figma.com/community/plugin/1691244420692136789/node-json-extractor) · [`SKILL.md`](./figma-extractor/SKILL.md) |
-| **[`figma-node-builder`](./figma-node-builder)** | **SDD Step 2 (Implement)** | Grounded UI builder that reads extracted Figma Node specifications (`.specs/*.json`) and companion preview images (`*.png`) to build components without CSS hallucinations. | [Guide](./figma-node-builder/README.md) · [`SKILL.md`](./figma-node-builder/SKILL.md) |
+| **[`figma-to-spec`](./figma-to-spec)** | **SDD Step 2 (Document & Plan)** | Reads a Figma URL or local `.specs/*.json` and outputs a structured Markdown UI handoff & functional specification (`.specs/<name>-ui.spec.md`) with layout tree, copy inventory, components, tokens, assets, and optional codebase gap analysis. Never writes application code. | [Guide](./figma-to-spec/README.md) · [`SKILL.md`](./figma-to-spec/SKILL.md) |
+| **[`figma-node-builder`](./figma-node-builder)** | **SDD Step 3 (Implement)** | Grounded UI builder that reads extracted Figma Node specifications (`.specs/*.json`) and companion preview images (`*.png`) to build components without CSS hallucinations. | [Guide](./figma-node-builder/README.md) · [`SKILL.md`](./figma-node-builder/SKILL.md) |
 
 ### 3. Community Ecosystem & Roadmap
 
@@ -54,8 +55,12 @@ flowchart TD
 
     subgraph FlowSDD ["📐 Spec-Driven Development (SDD)"]
         S1["Figma Design"] --> S2["figma-extractor"]
-        S2 --> S3[".specs/ Spec Contract"]
-        S3 --> S4["figma-node-builder"]
+        S2 --> S3[".specs/*.json AST"]
+        S3 --> S3b["figma-to-spec"]
+        S1 -.-> S3b
+        S3b --> S3c[".specs/*-ui.spec.md Handoff Spec"]
+        S3c --> S4["figma-node-builder"]
+        S3 --> S4
         S4 --> S5["Production UI Code"]
     end
 
@@ -65,7 +70,7 @@ flowchart TD
 ```
 
 - **Architecture Scaffolding**: Use `generate-meta-repo` to scaffold clean multi-root workspaces with independent git sub-repos, automated cross-repo linking, and hierarchical agent governance.
-- **Spec-Driven Frontend Development (SDD)**: Use `figma-extractor` + `figma-node-builder` when precision is essential. The design spec is extracted to disk first, reviewed, and systematically implemented without premature or hallucinated code edits.
+- **Spec-Driven Frontend Development (SDD)**: Use `figma-extractor` + `figma-to-spec` + `figma-node-builder` when precision and reviewability matter. Extract the design AST to disk, generate a human- and agent-readable Markdown handoff spec (with optional codebase gap analysis), and implement cleanly without hallucinated code edits.
 - **Fast UI Prototyping**: Use `figma-to-code` for immediate, single-turn conversion of a Figma link directly into UI code.
 
 ---
@@ -96,17 +101,18 @@ npx github:pedroab0/skills
 
 The installer features an interactive terminal UI:
 * **Navigate**: Use keyboard arrows (`↑` / `↓`) or vim keys (`k` / `j`) to move between options.
-* **Select**: Press `[Enter]` or press number keys (`1` - `6`) to select directly.
+* **Select**: Press `[Enter]` or press number keys (`1` - `7`) to select directly.
 * **Exit**: Press `[ESC]` or `q` at any time to cancel cleanly.
 
 ### Selection Options & Presets
 
 * `[Enter / 1]` **All skills**: Installs full suite (recommended)
-* `[2]` **SDD Suite**: `figma-extractor` + `figma-node-builder`
+* `[2]` **SDD Suite**: `figma-extractor` + `figma-to-spec` + `figma-node-builder`
 * `[3]` **`figma-to-code`**: Fast prototyping (URL ──► UI Code)
 * `[4]` **`figma-extractor`**: Figma scraper (AST, tokens & previews to `.specs/`)
-* `[5]` **`figma-node-builder`**: Builds UI components from `.specs/*.json`
-* `[6]` **`generate-meta-repo`**: Scaffolds Meta-Repo & AI governance
+* `[5]` **`figma-to-spec`**: Generates Markdown UI handoff & implementation specs (`.specs/*-ui.spec.md`)
+* `[6]` **`figma-node-builder`**: Builds UI components from `.specs/*.json`
+* `[7]` **`generate-meta-repo`**: Scaffolds Meta-Repo & AI governance
 
 Or specify flags for non-interactive automation:
 ```bash
@@ -144,7 +150,7 @@ All skills follow the open Agent Skills standard (`SKILL.md` format) and can be 
 TARGET_DIR="$HOME/.claude/skills"
 mkdir -p "$TARGET_DIR"
 
-for skill in generate-meta-repo figma-to-code figma-extractor figma-node-builder; do
+for skill in generate-meta-repo figma-to-code figma-extractor figma-to-spec figma-node-builder; do
   ln -s "$(pwd)/$skill" "$TARGET_DIR/$skill"
 done
 ```
@@ -161,7 +167,8 @@ skills/
 ├── bin/                      # Multi-agent interactive CLI installer (npx @pedroab0/skills@latest)
 ├── generate-meta-repo/       # Domain: Architecture & Workspace Engineering
 ├── figma-extractor/          # Domain: Design & Spec-Driven Development (Step 1: Ingest)
-├── figma-node-builder/       # Domain: Design & Spec-Driven Development (Step 2: Implement)
+├── figma-to-spec/            # Domain: Design & Spec-Driven Development (Step 2: Markdown Handoff Spec)
+├── figma-node-builder/       # Domain: Design & Spec-Driven Development (Step 3: Implement)
 ├── figma-to-code/            # Domain: Rapid Prototyping (One-Shot)
 ├── test/                     # Cross-agent installer & documentation parity test suite
 └── evals/                    # Multi-model evaluation rubrics (Haiku, Sonnet, Opus)

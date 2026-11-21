@@ -13,7 +13,7 @@ Requires Node.js >= 16.7. The scripts have zero dependencies (no `npm install`).
 
 - **Never open Figma URLs with browser tools** (Playwright, Puppeteer, Chrome DevTools). The Figma canvas is WebGL, so there is no DOM to read. Do not search for local browser binaries.
 - **API errors are final**: report them to the user. Never fall back to scraping.
-- If the user only wants to inspect, document, or plan the design, stop and suggest the `figma-extractor` skill instead.
+- If the user wants a structured Markdown handoff or implementation specification instead of code, stop and suggest `figma-to-spec` (or `figma-extractor` for raw JSON extraction only).
 
 ## Workflow
 
