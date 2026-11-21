@@ -142,6 +142,22 @@ Ports, paths, and categories often scatter across Makefiles, `docker-compose`, R
 *   Use `ref` to freeze the ecosystem at a known state (e.g., reproducing a bug from release `v2.3`).
 *   Suggested advanced command: `make snapshot`, which records the current SHAs of all repositories into `repos.lock.json`, similar to Google's `repo manifest -r`.
 
+### 4.6. Companion IaC / Deploy Repositories (Parent Grouping Folder Pattern)
+When every application or service repository has a dedicated sibling repository for Infrastructure-as-Code or GitOps deployment (`*-iac`, `*-deploy`, `*-infra` in Terraform, Helm, Kustomize, Pulumi, or CDK):
+
+*   **Never nest one Git repository inside another**: cloning `frontend-iac` inside the `frontend` Git working tree would pollute `frontend`'s `git status` and `.gitignore`.
+*   **Group pairs inside a neutral parent folder (pseudo-folder)**: place the code repository and its companion IaC/deploy repository side-by-side inside a plain parent directory (which has no `.git` of its own):
+    ```text
+    apps/frontend/                      # Neutral parent folder (no .git)
+    ├── frontend/                       # Git repo 1: application code (category: "frontend")
+    └── frontend-iac/                   # Git repo 2: IaC / deploy manifests (category: "iac")
+    ```
+    *(Or at the top level as `frontend/frontend` and `frontend/frontend-iac`, with `/frontend/` in the root `.gitignore`).*
+*   **Manifest Pairing & Selective Cloning**:
+    *   Assign `"category": "iac"` (or `"deploy"` / `"infra"`), the same `"product"` as the sibling service, and optional `"companion": "frontend-iac"` / `"companionOf": "frontend"` fields in `repos.json`.
+    *   `make bootstrap-product PRODUCT=checkout` clones both the application and its IaC sibling together; `make bootstrap-iac` (`node scripts/bootstrap.mjs --category=iac`) clones only IaC repositories across the organization.
+*   **IDE Pseudo-Folder View (`*.code-workspace`)**: point a single `folders` entry in `.code-workspace` to the neutral parent folder (`{ "name": "Frontend (Next.js + IaC)", "path": "apps/frontend" }`) and set `"git.autoRepositoryDetection": "subFolders"` in `settings` so the editor displays a single root tree node while tracking both Git repositories independently.
+
 ---
 
 ## 5. Workspace Command Dictionary
@@ -1143,6 +1159,7 @@ make status                      # workspace git status
 1. **Hierarchy and Semantic Naming (`folders`)**:
    * Place documentation and governance folders at the top (`docs/`, `specs/`, `.ai/`).
    * Include the stack in parentheses in folder labels (e.g., `"Web Portal (Next.js)"`, `"Billing API (Go)"`) to speed up quick file navigation (`Cmd/Ctrl + P`).
+   * When services have sibling IaC/deploy repositories grouped under a parent folder (Section 4.6), point the workspace folder entry to the parent directory (e.g., `"path": "apps/web-portal"`) and enable `"git.autoRepositoryDetection": "subFolders"` in `settings`.
    * List only active repositories. Legacy repositories can live in a separate workspace file (e.g., `acme-legacy.code-workspace`).
 2. **File Watcher Protection (`files.watcherExclude`)**:
    * Combined build and dependency folders across repositories easily exceed 500,000 files.
