@@ -16,9 +16,9 @@ console.log('--- Running CLI & Installer Unit Tests ---');
 
 // 1. Skill Discovery & Frontmatter Parsing
 const skills = getAvailableSkills();
-assert.strictEqual(skills.length, 4, 'Should discover exactly 4 skills');
+assert.strictEqual(skills.length, 5, 'Should discover exactly 5 skills');
 const skillNames = skills.map((s) => s.name).sort();
-assert.deepStrictEqual(skillNames, ['figma-extractor', 'figma-node-builder', 'figma-to-code', 'generate-meta-repo']);
+assert.deepStrictEqual(skillNames, ['figma-extractor', 'figma-node-builder', 'figma-to-code', 'figma-to-spec', 'generate-meta-repo']);
 
 assert.strictEqual(
   parseFrontmatterField("---\nname: test\ndescription: 'Simple text with ''nested'' quotes'\n---\nBody", 'description'),
@@ -95,6 +95,7 @@ try {
   // 5. CLI invocation --list
   const listOutput = execSync('node ./bin/cli.js --list', { cwd: path.resolve(__dirname, '..'), encoding: 'utf8' });
   assert.ok(listOutput.includes('figma-extractor'));
+  assert.ok(listOutput.includes('figma-to-spec'));
   assert.ok(listOutput.includes('figma-node-builder'));
   assert.ok(listOutput.includes('figma-to-code'));
   assert.ok(listOutput.includes('generate-meta-repo'));
@@ -105,27 +106,36 @@ try {
   execSync(`node ./bin/cli.js --dest "${destDir1}"`, { cwd: path.resolve(__dirname, '..'), input: '\n', encoding: 'utf8' });
   assert.ok(fs.existsSync(path.join(destDir1, 'figma-to-code')));
   assert.ok(fs.existsSync(path.join(destDir1, 'figma-extractor')));
+  assert.ok(fs.existsSync(path.join(destDir1, 'figma-to-spec', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(destDir1, 'figma-to-spec', 'scripts', 'analyze_spec.js')));
+  assert.ok(fs.existsSync(path.join(destDir1, 'figma-to-spec', 'scripts', 'fetch_figma.js')));
+  assert.ok(
+    !fs.existsSync(path.join(destDir1, 'figma-to-spec', 'scripts', 'test_analyze_spec.js')),
+    'Should exclude unit test files inside figma-to-spec',
+  );
   assert.ok(fs.existsSync(path.join(destDir1, 'figma-node-builder')));
   assert.ok(fs.existsSync(path.join(destDir1, 'generate-meta-repo')));
   assert.ok(
     !fs.existsSync(path.join(destDir1, 'generate-meta-repo', '.specs')),
     'Should exclude .specs/ directory inside generate-meta-repo',
   );
-  console.log('  ✓ cli preset 1: [Enter] installs all skills (excluding .specs/)');
+  console.log('  ✓ cli preset 1: [Enter] installs all skills (excluding .specs/ and test files)');
 
   // 7. CLI non-TTY interactive selection preset 2 (SDD Suite)
   const destDir2 = path.join(tmpDir, 'dest-2');
   execSync(`node ./bin/cli.js --dest "${destDir2}"`, { cwd: path.resolve(__dirname, '..'), input: '2\n', encoding: 'utf8' });
   assert.ok(fs.existsSync(path.join(destDir2, 'figma-extractor')));
+  assert.ok(fs.existsSync(path.join(destDir2, 'figma-to-spec')));
   assert.ok(fs.existsSync(path.join(destDir2, 'figma-node-builder')));
   assert.ok(!fs.existsSync(path.join(destDir2, 'figma-to-code')));
-  console.log('  ✓ cli preset 2: [2] installs SDD suite (figma-extractor + figma-node-builder)');
+  console.log('  ✓ cli preset 2: [2] installs SDD suite (figma-extractor + figma-to-spec + figma-node-builder)');
 
   // 8. CLI non-TTY interactive selection preset 3 (figma-to-code only)
   const destDir3 = path.join(tmpDir, 'dest-3');
   execSync(`node ./bin/cli.js --dest "${destDir3}"`, { cwd: path.resolve(__dirname, '..'), input: '3\n', encoding: 'utf8' });
   assert.ok(fs.existsSync(path.join(destDir3, 'figma-to-code')));
   assert.ok(!fs.existsSync(path.join(destDir3, 'figma-extractor')));
+  assert.ok(!fs.existsSync(path.join(destDir3, 'figma-to-spec')));
   assert.ok(!fs.existsSync(path.join(destDir3, 'figma-node-builder')));
   console.log('  ✓ cli preset 3: [3] installs figma-to-code only');
 
@@ -134,23 +144,34 @@ try {
   execSync(`node ./bin/cli.js --dest "${destDir4}"`, { cwd: path.resolve(__dirname, '..'), input: '4\n', encoding: 'utf8' });
   assert.ok(fs.existsSync(path.join(destDir4, 'figma-extractor')));
   assert.ok(!fs.existsSync(path.join(destDir4, 'figma-to-code')));
+  assert.ok(!fs.existsSync(path.join(destDir4, 'figma-to-spec')));
   console.log('  ✓ cli preset 4: [4] installs figma-extractor only');
 
-  // 10. CLI non-TTY interactive selection preset 5 (figma-node-builder only)
-  const destDir5 = path.join(tmpDir, 'dest-5');
-  execSync(`node ./bin/cli.js --dest "${destDir5}"`, { cwd: path.resolve(__dirname, '..'), input: '5\n', encoding: 'utf8' });
-  assert.ok(fs.existsSync(path.join(destDir5, 'figma-node-builder')));
-  assert.ok(!fs.existsSync(path.join(destDir5, 'figma-to-code')));
-  console.log('  ✓ cli preset 5: [5] installs figma-node-builder only');
+  // 9b. CLI non-TTY interactive selection preset 5 (figma-to-spec only)
+  const destDir5Spec = path.join(tmpDir, 'dest-5-spec');
+  execSync(`node ./bin/cli.js --dest "${destDir5Spec}"`, { cwd: path.resolve(__dirname, '..'), input: '5\n', encoding: 'utf8' });
+  assert.ok(fs.existsSync(path.join(destDir5Spec, 'figma-to-spec', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(destDir5Spec, 'figma-to-spec', 'REFERENCE.md')));
+  assert.ok(!fs.existsSync(path.join(destDir5Spec, 'figma-extractor')));
+  assert.ok(!fs.existsSync(path.join(destDir5Spec, 'figma-node-builder')));
+  console.log('  ✓ cli preset 5: [5] installs figma-to-spec only');
 
-  // 10b. CLI non-TTY interactive selection preset 6 (generate-meta-repo only)
-  const destDir6 = path.join(tmpDir, 'dest-6');
-  execSync(`node ./bin/cli.js --dest "${destDir6}"`, { cwd: path.resolve(__dirname, '..'), input: '6\n', encoding: 'utf8' });
-  assert.ok(fs.existsSync(path.join(destDir6, 'generate-meta-repo', 'SKILL.md')));
-  assert.ok(fs.existsSync(path.join(destDir6, 'generate-meta-repo', 'meta-repo-architecture-guide.md')));
-  assert.ok(!fs.existsSync(path.join(destDir6, 'generate-meta-repo', '.specs')));
-  assert.ok(!fs.existsSync(path.join(destDir6, 'figma-to-code')));
-  console.log('  ✓ cli preset 6: [6] installs generate-meta-repo only');
+  // 10. CLI non-TTY interactive selection preset 6 (figma-node-builder only)
+  const destDir6Builder = path.join(tmpDir, 'dest-6-builder');
+  execSync(`node ./bin/cli.js --dest "${destDir6Builder}"`, { cwd: path.resolve(__dirname, '..'), input: '6\n', encoding: 'utf8' });
+  assert.ok(fs.existsSync(path.join(destDir6Builder, 'figma-node-builder')));
+  assert.ok(!fs.existsSync(path.join(destDir6Builder, 'figma-to-code')));
+  assert.ok(!fs.existsSync(path.join(destDir6Builder, 'figma-to-spec')));
+  console.log('  ✓ cli preset 6: [6] installs figma-node-builder only');
+
+  // 10b. CLI non-TTY interactive selection preset 7 (generate-meta-repo only)
+  const destDir7 = path.join(tmpDir, 'dest-7');
+  execSync(`node ./bin/cli.js --dest "${destDir7}"`, { cwd: path.resolve(__dirname, '..'), input: '7\n', encoding: 'utf8' });
+  assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(destDir7, 'generate-meta-repo', 'meta-repo-architecture-guide.md')));
+  assert.ok(!fs.existsSync(path.join(destDir7, 'generate-meta-repo', '.specs')));
+  assert.ok(!fs.existsSync(path.join(destDir7, 'figma-to-code')));
+  console.log('  ✓ cli preset 7: [7] installs generate-meta-repo only');
 
   // 11. CLI cancellation via 'q'
   const cancelOutput = execSync('node ./bin/cli.js', { cwd: path.resolve(__dirname, '..'), input: 'q\n', encoding: 'utf8' });
@@ -191,8 +212,19 @@ try {
     encoding: 'utf8',
   });
   assert.ok(fs.existsSync(path.join(kiroProjectDir, '.kiro', 'skills', 'figma-extractor', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(kiroProjectDir, '.kiro', 'skills', 'figma-to-spec', 'SKILL.md')));
   assert.ok(fs.existsSync(path.join(kiroProjectDir, '.kiro', 'skills', 'figma-node-builder', 'SKILL.md')));
   assert.ok(!fs.existsSync(path.join(kiroProjectDir, '.kiro', 'skills', 'figma-to-code')));
+
+  // Cursor rule install for figma-to-spec
+  execSync(`node "${path.resolve(__dirname, '..', 'bin', 'cli.js')}" --agent cursor --skill figma-to-spec`, {
+    cwd: cursorFlagProject,
+    encoding: 'utf8',
+  });
+  const toSpecMdc = fs.readFileSync(path.join(cursorFlagProject, '.cursor', 'rules', 'figma-to-spec.mdc'), 'utf8');
+  assert.ok(toSpecMdc.includes('alwaysApply: false'));
+  assert.ok(toSpecMdc.includes('](../skills/figma-to-spec/REFERENCE.md)'));
+  assert.ok(fs.existsSync(path.join(cursorFlagProject, '.cursor', 'skills', 'figma-to-spec', 'scripts', 'analyze_spec.js')));
 
   // Global install honoring KIRO_HOME via --agent kiro-cli --global
   execSync(`node "${path.resolve(__dirname, '..', 'bin', 'cli.js')}" --agent kiro-cli --skill figma-to-code --global`, {
@@ -201,7 +233,7 @@ try {
     encoding: 'utf8',
   });
   assert.ok(fs.existsSync(path.join(kiroCustomHome, 'skills', 'figma-to-code', 'SKILL.md')));
-  console.log('  ✓ Kiro IDE & CLI: installs into .kiro/skills (local) and $KIRO_HOME/skills (global)');
+  console.log('  ✓ Kiro IDE & CLI: installs SDD suite (3 skills) into .kiro/skills (local) and $KIRO_HOME/skills (global)');
 
   // 14. package.json bin collision guard (must not shadow `npx skills`)
   const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf8'));
@@ -216,4 +248,4 @@ try {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-console.log('\nResults: 14/14 CLI tests passed.\n');
+console.log('\nResults: 15/15 CLI tests passed.\n');

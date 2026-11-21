@@ -10,7 +10,7 @@
     "node": ">=16.7.0"
   },
   "scripts": {
-    "test": "node figma-extractor/scripts/test_fetch_figma.js && node figma-to-code/scripts/test_fetch_figma.js && node figma-node-builder/scripts/test_inspect_spec.js && node test/test_cli.js && node test/test_skills.js",
+    "test": "node figma-extractor/scripts/test_fetch_figma.js && node figma-to-code/scripts/test_fetch_figma.js && node figma-node-builder/scripts/test_inspect_spec.js && node figma-to-spec/scripts/test_analyze_spec.js && node test/test_cli.js && node test/test_skills.js",
     "test:skills": "node test/test_skills.js",
     "pack:check": "npm pack --dry-run",
     "install-skills": "node ./bin/cli.js"
@@ -44,6 +44,7 @@
     "bin",
     "figma-to-code",
     "figma-extractor",
+    "figma-to-spec",
     "figma-node-builder",
     "generate-meta-repo",
     "README.md",

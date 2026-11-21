@@ -7,7 +7,7 @@ const { getAvailableSkills, parseFrontmatterField } = require('../bin/cli.js');
 console.log('--- Running Agent Skills Best-Practices Linter & Parity Tests ---');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
-const SKILL_DIRS = ['figma-extractor', 'figma-node-builder', 'figma-to-code', 'generate-meta-repo'];
+const SKILL_DIRS = ['figma-extractor', 'figma-to-spec', 'figma-node-builder', 'figma-to-code', 'generate-meta-repo'];
 const RESERVED_WORDS = ['anthropic', 'claude'];
 
 function parseFrontmatter(filePath) {
@@ -43,7 +43,7 @@ function extractHelpFlags(scriptPath) {
 }
 
 const discoveredSkills = getAvailableSkills();
-assert.strictEqual(discoveredSkills.length, 4, 'Must discover all 4 skills');
+assert.strictEqual(discoveredSkills.length, 5, 'Must discover all 5 skills');
 
 for (const skillDir of SKILL_DIRS) {
   const skillPath = path.join(ROOT_DIR, skillDir);
@@ -162,6 +162,23 @@ for (const flag of inspectorHelpFlags) {
   assert.ok(
     nodeBuilderSkillContent.includes(flag),
     `Flag "${flag}" from inspect_spec.js --help must be documented in figma-node-builder/SKILL.md`,
+  );
+}
+
+// 7d. figma-to-spec analyze_spec.js & fetch_figma.js
+const toSpecRefContent = fs.readFileSync(path.join(ROOT_DIR, 'figma-to-spec', 'REFERENCE.md'), 'utf8');
+const analyzerHelpFlags = extractHelpFlags(path.join(ROOT_DIR, 'figma-to-spec', 'scripts', 'analyze_spec.js'));
+for (const flag of analyzerHelpFlags) {
+  assert.ok(
+    toSpecRefContent.includes(flag),
+    `Flag "${flag}" from analyze_spec.js --help must be documented in figma-to-spec/REFERENCE.md`,
+  );
+}
+const toSpecFetchHelpFlags = extractHelpFlags(path.join(ROOT_DIR, 'figma-to-spec', 'scripts', 'fetch_figma.js'));
+for (const flag of toSpecFetchHelpFlags) {
+  assert.ok(
+    toSpecRefContent.includes(flag),
+    `Flag "${flag}" from figma-to-spec/scripts/fetch_figma.js --help must be documented in figma-to-spec/REFERENCE.md`,
   );
 }
 

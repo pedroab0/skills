@@ -66,8 +66,8 @@ ${style.bold('Examples:')}
   npx @pedroab0/skills@latest
   npx @pedroab0/skills@latest --agent claude --skill all
   npx @pedroab0/skills@latest --agent kiro --skill sdd
-  npx @pedroab0/skills@latest --agent antigravity --skill figma-extractor,figma-node-builder
-  npx @pedroab0/skills@latest --dest ~/.claude/skills --skill figma-to-code
+  npx @pedroab0/skills@latest --agent antigravity --skill figma-extractor,figma-to-spec,figma-node-builder
+  npx @pedroab0/skills@latest --dest ~/.claude/skills --skill figma-to-spec
 `);
 }
 
@@ -664,6 +664,7 @@ async function main() {
   // 1. SELECT SKILLS
   let selectedSkills = [];
   const figmaExtractor = availableSkills.find((s) => s.name === 'figma-extractor');
+  const figmaToSpec = availableSkills.find((s) => s.name === 'figma-to-spec');
   const figmaNodeBuilder = availableSkills.find((s) => s.name === 'figma-node-builder');
   const figmaToCode = availableSkills.find((s) => s.name === 'figma-to-code');
   const generateMetaRepo = availableSkills.find((s) => s.name === 'generate-meta-repo');
@@ -673,7 +674,7 @@ async function main() {
     if (lower === 'all') {
       selectedSkills = availableSkills;
     } else if (lower === 'sdd' || lower === 'suite') {
-      selectedSkills = [figmaExtractor, figmaNodeBuilder].filter(Boolean);
+      selectedSkills = [figmaExtractor, figmaToSpec, figmaNodeBuilder].filter(Boolean);
     } else {
       const names = flagSkill.split(',').map((x) => x.trim().toLowerCase());
       selectedSkills = availableSkills.filter((s) => names.includes(s.name.toLowerCase()));
@@ -687,11 +688,11 @@ async function main() {
     const skillOptions = [
       {
         label: 'All skills',
-        hint: '(recommended: installs figma-to-code, figma-extractor, figma-node-builder & generate-meta-repo)',
+        hint: '(recommended: installs figma-to-code, figma-extractor, figma-to-spec, figma-node-builder & generate-meta-repo)',
         value: 'all',
       },
       {
-        label: 'figma-extractor and figma-node-builder',
+        label: 'figma-extractor, figma-to-spec and figma-node-builder',
         hint: '- Spec-Driven Development (SDD) Suite',
         value: 'sdd',
       },
@@ -704,6 +705,11 @@ async function main() {
         label: 'figma-extractor',
         hint: '- Figma design scraper (extracts layout AST, tokens & preview images to .specs/)',
         value: 'figma-extractor',
+      },
+      {
+        label: 'figma-to-spec',
+        hint: '- Generates Markdown UI handoff & implementation specs (.specs/*-ui.spec.md) from Figma URLs or JSON',
+        value: 'figma-to-spec',
       },
       {
         label: 'figma-node-builder',
@@ -724,9 +730,10 @@ async function main() {
       onConfirm: (item) => {
         let skillsForChoice = [];
         if (item.value === 'all') skillsForChoice = availableSkills;
-        else if (item.value === 'sdd') skillsForChoice = [figmaExtractor, figmaNodeBuilder].filter(Boolean);
+        else if (item.value === 'sdd') skillsForChoice = [figmaExtractor, figmaToSpec, figmaNodeBuilder].filter(Boolean);
         else if (item.value === 'figma-to-code') skillsForChoice = [figmaToCode].filter(Boolean);
         else if (item.value === 'figma-extractor') skillsForChoice = [figmaExtractor].filter(Boolean);
+        else if (item.value === 'figma-to-spec') skillsForChoice = [figmaToSpec].filter(Boolean);
         else if (item.value === 'figma-node-builder') skillsForChoice = [figmaNodeBuilder].filter(Boolean);
         else if (item.value === 'generate-meta-repo') skillsForChoice = [generateMetaRepo].filter(Boolean);
 
@@ -737,11 +744,13 @@ async function main() {
     if (chosenValue === 'all') {
       selectedSkills = availableSkills;
     } else if (chosenValue === 'sdd') {
-      selectedSkills = [figmaExtractor, figmaNodeBuilder].filter(Boolean);
+      selectedSkills = [figmaExtractor, figmaToSpec, figmaNodeBuilder].filter(Boolean);
     } else if (chosenValue === 'figma-to-code') {
       selectedSkills = [figmaToCode].filter(Boolean);
     } else if (chosenValue === 'figma-extractor') {
       selectedSkills = [figmaExtractor].filter(Boolean);
+    } else if (chosenValue === 'figma-to-spec') {
+      selectedSkills = [figmaToSpec].filter(Boolean);
     } else if (chosenValue === 'figma-node-builder') {
       selectedSkills = [figmaNodeBuilder].filter(Boolean);
     } else if (chosenValue === 'generate-meta-repo') {
