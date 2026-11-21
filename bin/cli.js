@@ -4,7 +4,7 @@
  * Skills Installer CLI
  * https://github.com/pedroab0/skills
  *
- * Install curated AI agent skills for Claude Code, Cursor, Antigravity, OpenCode, and Kiro.
+ * Install curated AI agent skills for Claude Code, Cursor, Antigravity, OpenCode, Kiro, and Codex.
  * Usage: npx @pedroab0/skills@latest [options]
  */
 
@@ -41,7 +41,7 @@ const ui = {
 
 function printBanner() {
   ui.header(`Skills Installer ${style.dim('(by @pedroab0)')}`);
-  ui.item(style.dim('Curated AI Agent Skills for Claude Code, Antigravity, Cursor, Kiro & OpenCode'));
+  ui.item(style.dim('Curated AI Agent Skills for Claude Code, Antigravity, Cursor, Kiro, OpenCode & Codex'));
   ui.item(style.dim('https://github.com/pedroab0/skills'));
   ui.bar();
 }
@@ -53,7 +53,7 @@ ${style.bold('Usage:')}
   (or: npx github:pedroab0/skills [options])
 
 ${style.bold('Options:')}
-  --agent <name>       Target agent: claude, antigravity, cursor, kiro, opencode, all
+  --agent <name>       Target agent: claude, antigravity, cursor, kiro, opencode, codex, all
   --skill <name>       Skill to install (or comma-separated, or "all", "sdd")
   --global             Install globally (available across all projects on your machine)
   --local              Install in current project workspace only
@@ -65,6 +65,7 @@ ${style.bold('Options:')}
 ${style.bold('Examples:')}
   npx @pedroab0/skills@latest
   npx @pedroab0/skills@latest --agent claude --skill all
+  npx @pedroab0/skills@latest --agent codex --skill sdd
   npx @pedroab0/skills@latest --agent kiro --skill sdd
   npx @pedroab0/skills@latest --agent antigravity --skill figma-extractor,figma-to-spec,figma-node-builder
   npx @pedroab0/skills@latest --dest ~/.claude/skills --skill figma-to-spec
@@ -140,6 +141,9 @@ function getAgentConfigs(cwd) {
   const kiroHome = process.env.KIRO_HOME
     ? process.env.KIRO_HOME.replace(/^~(?=$|[\\/])/, home)
     : path.join(home, '.kiro');
+  const codexHome = process.env.CODEX_HOME
+    ? process.env.CODEX_HOME.replace(/^~(?=$|[\\/])/, home)
+    : path.join(home, '.codex');
   const xdgConfig = process.env.XDG_CONFIG_HOME || path.join(home, '.config');
 
   return {
@@ -174,6 +178,16 @@ function getAgentConfigs(cwd) {
       globalPath: path.join(xdgConfig, 'opencode', 'skills'),
       localPath: path.join(cwd, '.opencode', 'skills'),
       isDetected: fs.existsSync(path.join(xdgConfig, 'opencode')),
+    },
+    codex: {
+      name: 'OpenAI Codex',
+      globalPath: path.join(codexHome, 'skills'),
+      localPath: path.join(cwd, '.agents', 'skills'),
+      isDetected:
+        fs.existsSync(codexHome) ||
+        fs.existsSync(path.join(home, '.agents', 'skills')) ||
+        fs.existsSync(path.join(cwd, '.agents', 'skills')) ||
+        fs.existsSync(path.join(cwd, '.codex')),
     },
   };
 }
@@ -771,7 +785,12 @@ async function main() {
       isCursor: false,
     });
   } else if (flagAgent) {
-    const normalizedAgent = flagAgent === 'kiro-ide' || flagAgent === 'kiro-cli' ? 'kiro' : flagAgent;
+    const normalizedAgent =
+      flagAgent === 'kiro-ide' || flagAgent === 'kiro-cli'
+        ? 'kiro'
+        : flagAgent === 'codex-cli'
+          ? 'codex'
+          : flagAgent;
     const resolveScopeIsGlobal = (agentKey) => (flagScope ? flagScope === 'global' : agentKey !== 'cursor');
     if (normalizedAgent === 'all') {
       for (const [key, cfg] of Object.entries(agentConfigs)) {
@@ -791,7 +810,7 @@ async function main() {
         isCursor: !!cfg.isCursorRule,
       });
     } else {
-      console.error(style.yellow(`⚠ Unknown agent "${flagAgent}". Options: claude, antigravity, cursor, kiro, opencode, all`));
+      console.error(style.yellow(`⚠ Unknown agent "${flagAgent}". Options: claude, antigravity, cursor, kiro, opencode, codex, all`));
       process.exit(1);
     }
   } else {
@@ -801,6 +820,7 @@ async function main() {
       { id: 'cursor', ...agentConfigs.cursor },
       { id: 'kiro', ...agentConfigs.kiro },
       { id: 'opencode', ...agentConfigs.opencode },
+      { id: 'codex', ...agentConfigs.codex },
       { id: 'all', name: 'All detected agents' },
     ];
 

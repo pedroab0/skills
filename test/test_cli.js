@@ -35,7 +35,14 @@ assert.strictEqual(
 console.log('  ✓ getAvailableSkills & parseFrontmatterField: discovers skills and robustly parses frontmatter');
 
 // 2. Agent Configs
-const configs = getAgentConfigs('/mock/project');
+const prevCodexHome = process.env.CODEX_HOME;
+delete process.env.CODEX_HOME;
+let configs;
+try {
+  configs = getAgentConfigs('/mock/project');
+} finally {
+  if (prevCodexHome !== undefined) process.env.CODEX_HOME = prevCodexHome;
+}
 assert.ok(configs.claude, 'claude config exists');
 assert.ok(configs.antigravity, 'antigravity config exists');
 assert.ok(configs.antigravity.globalPath.includes(path.join('.gemini', 'config', 'skills')));
@@ -44,6 +51,10 @@ assert.ok(configs.kiro, 'kiro config exists');
 assert.ok(configs.kiro.globalPath.endsWith(path.join('.kiro', 'skills')));
 assert.ok(configs.kiro.localPath.endsWith(path.join('.kiro', 'skills')));
 assert.ok(configs.opencode, 'opencode config exists');
+assert.ok(configs.codex, 'codex config exists');
+assert.strictEqual(configs.codex.name, 'OpenAI Codex');
+assert.ok(configs.codex.globalPath.endsWith(path.join('.codex', 'skills')));
+assert.ok(configs.codex.localPath.endsWith(path.join('.agents', 'skills')));
 assert.strictEqual(configs.cursor.isCursorRule, true);
 console.log('  ✓ getAgentConfigs: returns expected configurations');
 
@@ -235,7 +246,31 @@ try {
   assert.ok(fs.existsSync(path.join(kiroCustomHome, 'skills', 'figma-to-code', 'SKILL.md')));
   console.log('  ✓ Kiro IDE & CLI: installs SDD suite (3 skills) into .kiro/skills (local) and $KIRO_HOME/skills (global)');
 
-  // 14. package.json bin collision guard (must not shadow `npx skills`)
+  // 14. OpenAI Codex support (--agent codex / codex-cli + CODEX_HOME)
+  const codexProjectDir = path.join(tmpDir, 'codex-project');
+  const codexCustomHome = path.join(tmpDir, 'custom-codex-home');
+  fs.mkdirSync(codexProjectDir, { recursive: true });
+
+  // Local workspace install via --agent codex --skill sdd --local
+  execSync(`node "${path.resolve(__dirname, '..', 'bin', 'cli.js')}" --agent codex --skill sdd --local`, {
+    cwd: codexProjectDir,
+    encoding: 'utf8',
+  });
+  assert.ok(fs.existsSync(path.join(codexProjectDir, '.agents', 'skills', 'figma-extractor', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(codexProjectDir, '.agents', 'skills', 'figma-to-spec', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(codexProjectDir, '.agents', 'skills', 'figma-node-builder', 'SKILL.md')));
+  assert.ok(!fs.existsSync(path.join(codexProjectDir, '.agents', 'skills', 'figma-to-code')));
+
+  // Global install honoring CODEX_HOME via --agent codex-cli --skill figma-to-code --global
+  execSync(`node "${path.resolve(__dirname, '..', 'bin', 'cli.js')}" --agent codex-cli --skill figma-to-code --global`, {
+    cwd: codexProjectDir,
+    env: { ...process.env, CODEX_HOME: codexCustomHome },
+    encoding: 'utf8',
+  });
+  assert.ok(fs.existsSync(path.join(codexCustomHome, 'skills', 'figma-to-code', 'SKILL.md')));
+  console.log('  ✓ OpenAI Codex: installs SDD suite (3 skills) into .agents/skills (local) and $CODEX_HOME/skills (global)');
+
+  // 15. package.json bin collision guard (must not shadow `npx skills`)
   const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf8'));
   assert.strictEqual(pkg.bin.skills, undefined, 'package.json bin must not declare "skills" (collides with npx skills)');
   assert.deepStrictEqual(
@@ -248,4 +283,4 @@ try {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-console.log('\nResults: 15/15 CLI tests passed.\n');
+console.log('\nResults: 17/17 CLI tests passed.\n');

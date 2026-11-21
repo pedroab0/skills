@@ -1,7 +1,7 @@
 {
   "name": "@pedroab0/skills",
   "version": "1.5.0",
-  "description": "Curated collection of modular, production-ready skills for AI coding agents (Claude Code, Cursor, Kiro, OpenCode, Antigravity)",
+  "description": "Curated collection of modular, production-ready skills for AI coding agents (Claude Code, Cursor, Kiro, OpenCode, Codex, Antigravity)",
   "bin": {
     "pedroab0-skills": "bin/cli.js"
   },
@@ -29,6 +29,7 @@
     "kiro",
     "antigravity",
     "opencode",
+    "codex",
     "figma",
     "design-tokens",
     "spec-driven-development",
