@@ -4,11 +4,11 @@
     "skills": ["generate-meta-repo"],
     "query": "Create a meta-repo named acme-workspace (CLI alias: acme) for our platform: web-portal (Next.js, frontend, checkout product, port 3000, runs on host with pnpm dev, git@github.com:acme/web-portal.git), checkout-api (Node.js, backend, checkout product, port 4001, runs in docker, git@github.com:acme/checkout-api.git), billing-api (Go, backend, billing product, port 4002, runs in docker, git@github.com:acme/billing-api.git), and legacy-monolith (PHP, legacy, branch master, git@github.com:acme/legacy-monolith.git). Backing infra: Postgres 16 and Redis 7.",
     "expected_behavior": [
-      "Reads meta-repo-architecture-guide.md before generating any workspace files",
+      "Follows progressive disclosure by reading blueprint.md (Phases 2-4) and entry-files.md (Phase 5) before generating workspace files, without loading reference.md unnecessarily",
       "Creates repos.json as the single source of truth with unique names, paths, ports, categories, and execution modes, and configures .gitignore to ignore /apps/, /services/, /legacy/, and .specs/",
-      "Generates the 4 zero-dependency Node.js scripts (scripts/bootstrap.mjs, scripts/run.mjs, scripts/install-cli.mjs, scripts/check-manifest.mjs) and a Makefile with literal TAB indentation deriving REPO_PATHS from repos.json",
+      "Runs scripts/copy_templates.js to copy the 4 zero-dependency Node.js scripts (bootstrap.mjs, run.mjs, install-cli.mjs, check-manifest.mjs) and .github/workflows/meta-repo.yml without transcribing them from memory, and generates a Makefile with literal TAB indentation deriving REPO_PATHS from repos.json",
       "Configures docker-compose.dev.yml with healthchecked postgres and redis containers and docker services named identically to repos.json (checkout-api, billing-api)",
-      "Generates README.md, layered AGENTS.md, CLAUDE.md (importing @AGENTS.md without duplicating rules), and acme.code-workspace following all 7 Workspace Guidelines (excluding legacy-monolith from active folders)",
+      "Generates README.md, layered AGENTS.md, CLAUDE.md (importing @AGENTS.md without duplicating rules), and acme.code-workspace following all 7 Workspace Guidelines (excluding legacy-monolith from active folders and adapting formatters/tsdk to active stacks)",
       "Executes Phase 6 validation by running node scripts/check-manifest.mjs and node scripts/bootstrap.mjs --all --dry-run until both pass with 0 errors"
     ]
   },
@@ -29,13 +29,25 @@
     "id": "gmr-03-incremental-evolution-and-sync",
     "skills": ["generate-meta-repo"],
     "query": "Update our existing acme-workspace meta-repo: add notification-worker (Python with uv, path workers/notification, backend category, port 4003, runs in docker, git@github.com:acme/notification-worker.git, requires RabbitMQ) and deprecate web-legacy by moving it to the legacy category.",
-    "context": "Workspace already contains repos.json, .gitignore, Makefile, docker-compose.dev.yml, acme.code-workspace, AGENTS.md, CLAUDE.md, and README.md.",
+    "context": "Workspace already contains repos.json, .gitignore, Makefile, docker-compose.dev.yml, acme.code-workspace, AGENTS.md, CLAUDE.md, README.md, and customized scripts/*.mjs.",
     "expected_behavior": [
-      "Detects Evolution Mode (existing repos.json) and inspects current workspace files before applying surgical updates",
+      "Detects Evolution Mode (existing repos.json), inspects current workspace files, and leaves existing scripts/*.mjs untouched without loading reference.md unnecessarily",
       "Updates repos.json with notification-worker and sets web-legacy category to \"legacy\", and adds /workers/ to .gitignore",
       "Updates Makefile install target to support Python/uv and updates docker-compose.dev.yml with a healthchecked rabbitmq service and notification-worker container without erasing existing custom rules",
       "Synchronizes AGENTS.md (Workspace Map), CLAUDE.md (stack snapshot), README.md (ports and directories), and acme.code-workspace (adds Notification Worker and removes web-legacy from active folders)",
       "Runs node scripts/check-manifest.mjs and node scripts/bootstrap.mjs --all --dry-run to verify zero drift across the updated meta-repo"
+    ]
+  },
+  {
+    "id": "gmr-04-companion-iac-parent-folder",
+    "skills": ["generate-meta-repo"],
+    "query": "Scaffold a meta-repo named nebula-workspace (alias: nebula) where our frontend (Next.js, port 3000, host, git@github.com:nebula/frontend.git) and payments-api (Go, port 4001, docker, git@github.com:nebula/payments-api.git) each have a dedicated sibling Terraform repo (frontend-iac and payments-api-iac) that must stay grouped visually without nesting Git repositories.",
+    "expected_behavior": [
+      "Groups each app/service and its sibling IaC repo side-by-side inside a neutral parent folder (e.g., apps/frontend/frontend + apps/frontend/frontend-iac) with no nested Git paths",
+      "Assigns category \"iac\", matching product, and companion/companionOf fields in repos.json",
+      "Adds a bootstrap-iac Makefile target (--category=iac) alongside standard targets and copies bundled templates via scripts/copy_templates.js",
+      "Points nebula.code-workspace folders to the neutral parent directories and enables \"git.autoRepositoryDetection\": \"subFolders\" in settings",
+      "Validates with node scripts/check-manifest.mjs and node scripts/bootstrap.mjs --all --dry-run with 0 errors"
     ]
   }
 ]
