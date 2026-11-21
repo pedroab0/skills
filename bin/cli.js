@@ -65,6 +65,7 @@ ${style.bold('Options:')}
 ${style.bold('Examples:')}
   npx @pedroab0/skills@latest
   npx @pedroab0/skills@latest --agent claude --skill all
+  npx @pedroab0/skills@latest --agent opencode --skill sdd
   npx @pedroab0/skills@latest --agent codex --skill sdd
   npx @pedroab0/skills@latest --agent kiro --skill sdd
   npx @pedroab0/skills@latest --agent antigravity --skill figma-extractor,figma-to-spec,figma-node-builder
@@ -147,7 +148,12 @@ function getAgentConfigs(cwd) {
   const codexHome = process.env.CODEX_HOME
     ? process.env.CODEX_HOME.replace(/^~(?=$|[\\/])/, home)
     : path.join(home, '.codex');
-  const xdgConfig = process.env.XDG_CONFIG_HOME || path.join(home, '.config');
+  const xdgConfig = process.env.XDG_CONFIG_HOME
+    ? process.env.XDG_CONFIG_HOME.replace(/^~(?=$|[\\/])/, home)
+    : path.join(home, '.config');
+  const opencodeHome = process.env.OPENCODE_CONFIG_DIR
+    ? process.env.OPENCODE_CONFIG_DIR.replace(/^~(?=$|[\\/])/, home)
+    : path.join(xdgConfig, 'opencode');
 
   return {
     claude: {
@@ -178,9 +184,9 @@ function getAgentConfigs(cwd) {
     },
     opencode: {
       name: 'OpenCode',
-      globalPath: path.join(xdgConfig, 'opencode', 'skills'),
+      globalPath: path.join(opencodeHome, 'skills'),
       localPath: path.join(cwd, '.opencode', 'skills'),
-      isDetected: fs.existsSync(path.join(xdgConfig, 'opencode')),
+      isDetected: fs.existsSync(opencodeHome) || fs.existsSync(path.join(cwd, '.opencode')),
     },
     codex: {
       name: 'OpenAI Codex',
@@ -795,7 +801,9 @@ async function main() {
           ? 'kiro'
           : flagAgent === 'codex-cli'
             ? 'codex'
-            : flagAgent;
+            : flagAgent === 'opencode-cli'
+              ? 'opencode'
+              : flagAgent;
     const resolveScopeIsGlobal = (agentKey) => (flagScope ? flagScope === 'global' : agentKey !== 'cursor');
     if (normalizedAgent === 'all') {
       for (const [key, cfg] of Object.entries(agentConfigs)) {

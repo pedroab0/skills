@@ -122,6 +122,9 @@ npx @pedroab0/skills@latest --agent claude --skill all
 # Install architecture generator for Google Antigravity
 npx @pedroab0/skills@latest --agent antigravity --skill generate-meta-repo
 
+# Install SDD suite for OpenCode (global: ~/.config/opencode/skills; add --local for .opencode/skills)
+npx @pedroab0/skills@latest --agent opencode --skill sdd
+
 # Install SDD suite for OpenAI Codex (global: ~/.codex/skills; add --local for .agents/skills)
 npx @pedroab0/skills@latest --agent codex --skill sdd
 
@@ -142,7 +145,7 @@ All skills follow the open Agent Skills standard (`SKILL.md` format) and can be 
 | :--- | :--- | :--- |
 | **Claude Code** | `$CLAUDE_CONFIG_DIR/skills/<skill>` (default `~/.claude/skills/<skill>`) | `.claude/skills/<skill>` |
 | **Google Antigravity** | `~/.gemini/config/skills/<skill>` | `.gemini/skills/<skill>` |
-| **OpenCode** | `~/.config/opencode/skills/<skill>` | `.opencode/skills/<skill>` |
+| **OpenCode** | `$OPENCODE_CONFIG_DIR/skills/<skill>` (default `~/.config/opencode/skills/<skill>`) | `.opencode/skills/<skill>` |
 | **Kiro (IDE & CLI)** | `~/.kiro/skills/<skill>` | `.kiro/skills/<skill>` |
 | **OpenAI Codex** | `~/.codex/skills/<skill>` (or `$CODEX_HOME/skills/<skill>`) | `.agents/skills/<skill>` |
 | **Cursor** | — | `.cursor/rules/<skill>.mdc` (or use installer) |

@@ -37,18 +37,30 @@ console.log('  ✓ getAvailableSkills & parseFrontmatterField: discovers skills 
 // 2. Agent Configs
 const prevClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
 const prevCodexHome = process.env.CODEX_HOME;
+const prevOpencodeConfigDir = process.env.OPENCODE_CONFIG_DIR;
+const prevXdgConfigHome = process.env.XDG_CONFIG_HOME;
 delete process.env.CLAUDE_CONFIG_DIR;
 delete process.env.CODEX_HOME;
+delete process.env.OPENCODE_CONFIG_DIR;
+delete process.env.XDG_CONFIG_HOME;
 let configs;
 let tildeClaudeConfigs;
+let tildeOpencodeConfigs;
 try {
   configs = getAgentConfigs('/mock/project');
   process.env.CLAUDE_CONFIG_DIR = '~/.claude-custom';
   tildeClaudeConfigs = getAgentConfigs('/mock/project');
+  process.env.OPENCODE_CONFIG_DIR = '~/.opencode-custom';
+  tildeOpencodeConfigs = getAgentConfigs('/mock/project');
 } finally {
   if (prevClaudeConfigDir !== undefined) process.env.CLAUDE_CONFIG_DIR = prevClaudeConfigDir;
   else delete process.env.CLAUDE_CONFIG_DIR;
   if (prevCodexHome !== undefined) process.env.CODEX_HOME = prevCodexHome;
+  else delete process.env.CODEX_HOME;
+  if (prevOpencodeConfigDir !== undefined) process.env.OPENCODE_CONFIG_DIR = prevOpencodeConfigDir;
+  else delete process.env.OPENCODE_CONFIG_DIR;
+  if (prevXdgConfigHome !== undefined) process.env.XDG_CONFIG_HOME = prevXdgConfigHome;
+  else delete process.env.XDG_CONFIG_HOME;
 }
 assert.ok(configs.claude, 'claude config exists');
 assert.strictEqual(configs.claude.name, 'Claude Code');
@@ -66,6 +78,14 @@ assert.ok(configs.kiro, 'kiro config exists');
 assert.ok(configs.kiro.globalPath.endsWith(path.join('.kiro', 'skills')));
 assert.ok(configs.kiro.localPath.endsWith(path.join('.kiro', 'skills')));
 assert.ok(configs.opencode, 'opencode config exists');
+assert.strictEqual(configs.opencode.name, 'OpenCode');
+assert.ok(configs.opencode.globalPath.endsWith(path.join('.config', 'opencode', 'skills')));
+assert.ok(configs.opencode.localPath.endsWith(path.join('.opencode', 'skills')));
+assert.strictEqual(
+  tildeOpencodeConfigs.opencode.globalPath,
+  path.join(os.homedir(), '.opencode-custom', 'skills'),
+  'OPENCODE_CONFIG_DIR should expand leading ~',
+);
 assert.ok(configs.codex, 'codex config exists');
 assert.strictEqual(configs.codex.name, 'OpenAI Codex');
 assert.ok(configs.codex.globalPath.endsWith(path.join('.codex', 'skills')));
@@ -323,7 +343,66 @@ try {
   assert.ok(fs.existsSync(path.join(claudeCustomHome, 'skills', 'figma-to-code', 'SKILL.md')));
   console.log('  ✓ Claude Code: installs SDD suite (3 skills) into .claude/skills (local) and $CLAUDE_CONFIG_DIR/skills (global)');
 
-  // 16. package.json bin collision guard (must not shadow `npx skills`)
+  // 16. OpenCode support (--agent opencode / opencode-cli + OPENCODE_CONFIG_DIR / XDG_CONFIG_HOME)
+  const opencodeProjectDir = path.join(tmpDir, 'opencode-project');
+  const opencodeCustomHome = path.join(tmpDir, 'custom-opencode-home');
+  const opencodeXdgHome = path.join(tmpDir, 'custom-xdg-config');
+  fs.mkdirSync(opencodeProjectDir, { recursive: true });
+
+  // Local workspace install via --agent opencode --skill sdd --local
+  execSync(`node "${path.resolve(__dirname, '..', 'bin', 'cli.js')}" --agent opencode --skill sdd --local`, {
+    cwd: opencodeProjectDir,
+    encoding: 'utf8',
+  });
+  assert.ok(fs.existsSync(path.join(opencodeProjectDir, '.opencode', 'skills', 'figma-extractor', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(opencodeProjectDir, '.opencode', 'skills', 'figma-to-spec', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(opencodeProjectDir, '.opencode', 'skills', 'figma-node-builder', 'SKILL.md')));
+  assert.ok(!fs.existsSync(path.join(opencodeProjectDir, '.opencode', 'skills', 'figma-to-code')));
+
+  // Verify local .opencode detection even when OPENCODE_CONFIG_DIR points to a non-existent dir
+  const prevOpencodeEnv = process.env.OPENCODE_CONFIG_DIR;
+  try {
+    process.env.OPENCODE_CONFIG_DIR = path.join(tmpDir, 'non-existent-opencode-home');
+    assert.strictEqual(
+      getAgentConfigs(opencodeProjectDir).opencode.isDetected,
+      true,
+      'opencode should be detected when local .opencode directory exists',
+    );
+  } finally {
+    if (prevOpencodeEnv !== undefined) process.env.OPENCODE_CONFIG_DIR = prevOpencodeEnv;
+    else delete process.env.OPENCODE_CONFIG_DIR;
+  }
+
+  // Global install honoring OPENCODE_CONFIG_DIR (taking priority over XDG_CONFIG_HOME)
+  execSync(`node "${path.resolve(__dirname, '..', 'bin', 'cli.js')}" --agent opencode --skill figma-to-code --global`, {
+    cwd: opencodeProjectDir,
+    env: { ...process.env, OPENCODE_CONFIG_DIR: opencodeCustomHome, XDG_CONFIG_HOME: opencodeXdgHome },
+    encoding: 'utf8',
+  });
+  assert.ok(fs.existsSync(path.join(opencodeCustomHome, 'skills', 'figma-to-code', 'SKILL.md')));
+  assert.ok(!fs.existsSync(path.join(opencodeXdgHome, 'opencode', 'skills', 'figma-to-code', 'SKILL.md')));
+
+  // Global install falling back to XDG_CONFIG_HOME/opencode/skills when OPENCODE_CONFIG_DIR is unset
+  const envWithoutOpencodeDir = { ...process.env, XDG_CONFIG_HOME: opencodeXdgHome };
+  delete envWithoutOpencodeDir.OPENCODE_CONFIG_DIR;
+  execSync(`node "${path.resolve(__dirname, '..', 'bin', 'cli.js')}" --agent opencode --skill figma-to-code --global`, {
+    cwd: opencodeProjectDir,
+    env: envWithoutOpencodeDir,
+    encoding: 'utf8',
+  });
+  assert.ok(fs.existsSync(path.join(opencodeXdgHome, 'opencode', 'skills', 'figma-to-code', 'SKILL.md')));
+
+  // Verify opencode-cli alias also resolves to opencode
+  const opencodeCliAliasHome = path.join(tmpDir, 'custom-opencode-cli-home');
+  execSync(`node "${path.resolve(__dirname, '..', 'bin', 'cli.js')}" --agent opencode-cli --skill figma-to-code --global`, {
+    cwd: opencodeProjectDir,
+    env: { ...process.env, OPENCODE_CONFIG_DIR: opencodeCliAliasHome },
+    encoding: 'utf8',
+  });
+  assert.ok(fs.existsSync(path.join(opencodeCliAliasHome, 'skills', 'figma-to-code', 'SKILL.md')));
+  console.log('  ✓ OpenCode: installs SDD suite (3 skills) into .opencode/skills (local) and $OPENCODE_CONFIG_DIR or $XDG_CONFIG_HOME/opencode/skills (global)');
+
+  // 17. package.json bin collision guard (must not shadow `npx skills`)
   const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf8'));
   assert.strictEqual(pkg.bin.skills, undefined, 'package.json bin must not declare "skills" (collides with npx skills)');
   assert.deepStrictEqual(
@@ -336,4 +415,4 @@ try {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-console.log('\nResults: 18/18 CLI tests passed.\n');
+console.log('\nResults: 19/19 CLI tests passed.\n');
