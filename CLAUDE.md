@@ -14,7 +14,7 @@ npm test
 # Run only the Agent Skills best-practices linter & flag parity check
 npm run test:skills
 
-# Check lean npm tarball packaging (< 100 kB)
+# Check lean npm tarball packaging (< 150 kB)
 npm run pack:check
 
 # Run skills installer locally

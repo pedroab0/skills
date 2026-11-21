@@ -40,7 +40,7 @@ This repository is an open-source suite of modular, cross-agent **Agent Skills**
 5. **Prohibition of Demo Folders in Git**:
    - Directories named `demo/`, `demos/`, `playground/`, or sample apps inside skills **must never be tracked in Git** and must remain in `.gitignore`.
 
-### B. Clean and Lean npm Packaging (< 100 kB)
+### B. Clean and Lean npm Packaging (< 150 kB)
 - The published npm tarball must contain **strictly the execution code and skill documentation**.
 - The `"files"` array in `package.json` must strictly exclude:
   - `!**/demo/**`
@@ -49,7 +49,7 @@ This repository is an open-source suite of modular, cross-agent **Agent Skills**
   - `!**/test_*.js`
   - `!**/figma-plugin/assets/**`
   - `test/` and `evals/` directories (remain only on GitHub).
-- **Always validate package size before release**: run `npm run pack:check` (or `npm pack --dry-run`) to ensure the tarball is under 100 kB (target: ~72 kB with 19 files).
+- **Always validate package size before release**: run `npm run pack:check` (or `npm pack --dry-run`) to ensure no excluded files are bundled and the tarball remains lean (< 150 kB).
 
 ### C. Zero External Dependencies in Scripts
 - All scripts in `scripts/` (`fetch_figma.js`, `inspect_spec.js`) must maintain **zero external npm dependencies** (no dependencies in `node_modules`).
@@ -168,7 +168,7 @@ Before proposing or committing any changes:
    ```bash
    npm run pack:check
    ```
-   Ensure no files from `demo/`, `test/`, `evals/`, or `test_*.js` are included, and total size is < 100 kB.
+   Ensure no files from `demo/`, `test/`, `evals/`, or `test_*.js` are included, and total size is < 150 kB.
 
 ---
 
