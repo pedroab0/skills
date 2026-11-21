@@ -202,8 +202,18 @@ try {
   });
   assert.ok(fs.existsSync(path.join(kiroCustomHome, 'skills', 'figma-to-code', 'SKILL.md')));
   console.log('  ✓ Kiro IDE & CLI: installs into .kiro/skills (local) and $KIRO_HOME/skills (global)');
+
+  // 14. package.json bin collision guard (must not shadow `npx skills`)
+  const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf8'));
+  assert.strictEqual(pkg.bin.skills, undefined, 'package.json bin must not declare "skills" (collides with npx skills)');
+  assert.deepStrictEqual(
+    pkg.bin,
+    { 'pedroab0-skills': 'bin/cli.js' },
+    'package.json bin should expose a single non-colliding "pedroab0-skills" entry',
+  );
+  console.log('  ✓ package.json bin: exposes single "pedroab0-skills" binary without shadowing "skills"');
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }
 
-console.log('\nResults: 13/13 CLI tests passed.\n');
+console.log('\nResults: 14/14 CLI tests passed.\n');
