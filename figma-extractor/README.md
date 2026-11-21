@@ -159,6 +159,7 @@ For developers who prefer exporting specifications directly from Figma Desktop w
   * **OpenCode**: `~/.config/opencode/skills/figma-extractor/figma-plugin/manifest.json`
   * **Google Antigravity**: `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`
   * **Kiro**: `~/.kiro/skills/figma-extractor/figma-plugin/manifest.json`
+  * **OpenAI Codex**: `~/.codex/skills/figma-extractor/figma-plugin/manifest.json` (or `.agents/skills/...`)
   * **Cloned Git Repo**: `<repo-root>/figma-extractor/figma-plugin/manifest.json`
 * **Export Options**: Select any frame or component, then click:
   * **📋 Copy Node JSON**: Copies the clean AST specification to your clipboard.

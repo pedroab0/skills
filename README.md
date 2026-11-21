@@ -3,7 +3,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/@pedroab0/skills"><img src="https://img.shields.io/npm/dm/@pedroab0/skills.svg" alt="npm downloads" /></a>
   <a href="https://www.npmjs.com/package/@pedroab0/skills"><img src="https://img.shields.io/npm/v/@pedroab0/skills.svg" alt="npm version" /></a>
-  <a href="https://github.com/pedroab0/skills"><img src="https://img.shields.io/badge/Agents-Claude%20Code%20%7C%20Cursor%20%7C%20Antigravity%20%7C%20Kiro%20%7C%20OpenCode-blueviolet.svg" alt="Supported Agents" /></a>
+  <a href="https://github.com/pedroab0/skills"><img src="https://img.shields.io/badge/Agents-Claude%20Code%20%7C%20Cursor%20%7C%20Antigravity%20%7C%20Kiro%20%7C%20OpenCode%20%7C%20Codex-blueviolet.svg" alt="Supported Agents" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
 </p>
 
@@ -122,6 +122,9 @@ npx @pedroab0/skills@latest --agent claude --skill all
 # Install architecture generator for Google Antigravity
 npx @pedroab0/skills@latest --agent antigravity --skill generate-meta-repo
 
+# Install SDD suite for OpenAI Codex (global: ~/.codex/skills; add --local for .agents/skills)
+npx @pedroab0/skills@latest --agent codex --skill sdd
+
 # Install SDD suite for Kiro (IDE & CLI)
 npx @pedroab0/skills@latest --agent kiro --skill sdd
 
@@ -141,6 +144,7 @@ All skills follow the open Agent Skills standard (`SKILL.md` format) and can be 
 | **Google Antigravity** | `~/.gemini/config/skills/<skill>` | `.gemini/skills/<skill>` |
 | **OpenCode** | `~/.config/opencode/skills/<skill>` | `.opencode/skills/<skill>` |
 | **Kiro (IDE & CLI)** | `~/.kiro/skills/<skill>` | `.kiro/skills/<skill>` |
+| **OpenAI Codex** | `~/.codex/skills/<skill>` (or `$CODEX_HOME/skills/<skill>`) | `.agents/skills/<skill>` |
 | **Cursor** | — | `.cursor/rules/<skill>.mdc` (or use installer) |
 
 ### Symlink Example (All Skills)

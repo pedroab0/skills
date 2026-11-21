@@ -1,6 +1,6 @@
 # Generate Meta-Repo (`generate-meta-repo`)
 
-Autonomous **Architecture & Workspace Engineering** skill for AI coding assistants (Claude Code, Google Antigravity, Cursor, Kiro, OpenCode).
+Autonomous **Architecture & Workspace Engineering** skill for AI coding assistants (Claude Code, Google Antigravity, Cursor, Kiro, OpenCode, Codex).
 
 Scaffolds and maintains a **Manifest-based Multi-root Workspace (Meta-Repo)** that coordinates independent Git repositories, shared dev infrastructure, and layered AI governance without `git submodule` fragility.
 

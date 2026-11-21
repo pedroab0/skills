@@ -10,7 +10,7 @@
   <a href="../../LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
 </p>
 
-Inspect, copy, and export compact, design-system-aware Node JSON and high-resolution companion preview images directly from **Figma Desktop** for AI coding assistants (Claude Code, Kiro, Cursor, OpenCode, Antigravity) and frontend engineering.
+Inspect, copy, and export compact, design-system-aware Node JSON and high-resolution companion preview images directly from **Figma Desktop** for AI coding assistants (Claude Code, Kiro, Cursor, OpenCode, Codex, Antigravity) and frontend engineering.
 
 ---
 
@@ -44,12 +44,14 @@ To install the plugin directly from your local skills folder or repository:
      * **OpenCode**: `~/.config/opencode/skills/figma-extractor/figma-plugin/manifest.json`
      * **Google Antigravity**: `~/.gemini/config/skills/figma-extractor/figma-plugin/manifest.json`
      * **Kiro**: `~/.kiro/skills/figma-extractor/figma-plugin/manifest.json`
+     * **OpenAI Codex**: `~/.codex/skills/figma-extractor/figma-plugin/manifest.json`
    * **Installed in local workspace (`--local`)**:
      * `.claude/skills/figma-extractor/figma-plugin/manifest.json`
      * `.cursor/skills/figma-extractor/figma-plugin/manifest.json`
      * `.opencode/skills/figma-extractor/figma-plugin/manifest.json`
      * `.gemini/skills/figma-extractor/figma-plugin/manifest.json`
      * `.kiro/skills/figma-extractor/figma-plugin/manifest.json`
+     * `.agents/skills/figma-extractor/figma-plugin/manifest.json`
    * **Cloned Git repository**:
      * `<repo-root>/figma-extractor/figma-plugin/manifest.json`
 4. The plugin is now permanently loaded under **Plugins** $\rightarrow$ **Development**.
@@ -77,7 +79,7 @@ To install the plugin directly from your local skills folder or repository:
 
 ## How to Tell Your Agent to Build the UI
 
-Once the specification is in `./.specs/`, simply instruct your agent in Claude Code, Kiro, Cursor, OpenCode, or Antigravity:
+Once the specification is in `./.specs/`, simply instruct your agent in Claude Code, Kiro, Cursor, OpenCode, Codex, or Antigravity:
 
 ```text
 Build the component from .specs/card.json
