@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.6.0] - 2026-11-20
+
+### Added
+- **First-Class OpenAI Codex Support (`bin/cli.js`)**: Added `codex` (and `--agent codex-cli` alias) to the interactive agent picker, `--agent all`, `--help`, and `getAgentConfigs()` with `$CODEX_HOME/skills` (default `~/.codex/skills`) for global installs, `.agents/skills` for workspace-local installs, and automatic local/global installation detection.
+- **Claude Code & OpenCode Config-Dir Overrides and Aliases**: Added `$CLAUDE_CONFIG_DIR` support (default `~/.claude`) with `--agent claude-code` alias, and `$OPENCODE_CONFIG_DIR` support (falling back to `$XDG_CONFIG_HOME/opencode`, default `~/.config/opencode`) with `--agent opencode-cli` alias, plus workspace-local `.claude` and `.opencode` detection.
+- **Expanded Installer E2E Test Coverage (`test/test_cli.js`)**: Added end-to-end CLI tests covering local and custom-env global installs for OpenAI Codex (`CODEX_HOME`), Claude Code (`CLAUDE_CONFIG_DIR`), and OpenCode (`OPENCODE_CONFIG_DIR` and `XDG_CONFIG_HOME` fallback), bringing the CLI suite to 19/19 tests.
+
+### Changed
+- **Documentation & Package Metadata**: Updated `package.json` description and keywords (`codex`), `README.md` Supported Agents badge, Quick Install examples, Manual Installation Guide paths table, and skill READMEs (`evals/README.md`, `figma-extractor/README.md`, `figma-extractor/figma-plugin/README.md`, `generate-meta-repo/README.md`) to reflect Codex, Claude Code, and OpenCode paths and env overrides.
+
+---
+
 ## [1.5.0] - 2026-11-20
 
 ### Added
